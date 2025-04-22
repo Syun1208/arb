@@ -1,0 +1,28 @@
+confirmation_agent_config:
+  name: ""
+  task_description: ""
+  llm_model: ""
+
+
+greeting_agent_config:
+  name: ""
+  task_description: ""
+  llm_model: ""
+
+
+greeting_recognizer_config:
+  name: ""
+  task_description: ""
+  llm_model: ""
+
+
+report_calling_agent_config:
+  name: ""
+  task_description: ""
+  llm_model: ""
+
+
+ner_agent_config:
+  name: ""
+  task_description: ""
+  llm_model: ""

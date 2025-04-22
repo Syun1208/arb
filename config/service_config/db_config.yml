@@ -1,0 +1,12 @@
+nosql_config:
+  conversation_path: "./data/database/conversation.json"
+
+sql_config:
+  aiml_mysql:
+    server : 'localhost'
+    database_name : 'SPU_AIML'
+    username : 'leon.vn'
+    password : 'leonvn@aiml2209#'
+    host : '10.18.200.72'
+    port : '3306'
+    dbms_name : 'MySQL'

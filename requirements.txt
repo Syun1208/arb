@@ -1,0 +1,17 @@
+# accelerate>=0.26.0
+colorlog
+dependency-injector
+thespian==3.10.5
+fastapi
+uvicorn[standard]
+pydantic
+pyyaml
+requests 
+pyodbc==5.1.0
+mysql-connector-python==8.4.0
+pandas
+psutil
+python-telegram-bot
+colorama
+types-colorama
+colorlog

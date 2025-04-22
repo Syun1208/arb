@@ -1,0 +1,18 @@
+**/*.csv
+**/*.npy
+**/*results**
+# **/*.json
+.vscode
+**/*.png
+**/*.pytest/
+**/*__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+./src/notebook/
+image/
+logs/
+README.md
+conversation.txt
+endpoints.txt

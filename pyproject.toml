@@ -1,0 +1,31 @@
+[project]
+name = "alphareportchatbot"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "leon.pham",email = "leon.pham@starixsoft.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+
+dependencies = [
+    "colorlog",
+    "dependency-injector",
+    "thespian==3.10.5",
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "pyyaml",
+    "requests",
+    "pyodbc==5.1.0", 
+    "mysql-connector-python==8.4.0",
+    "pandas",
+    "psutil",
+    "python-telegram-bot",
+    "colorama",
+    "types-colorama"
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
