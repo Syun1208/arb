@@ -1,0 +1,12 @@
+server:
+  http:
+    host: "0.0.0.0"
+    port: 5000
+
+default:
+  service_id: 200
+  app_name: "ALPHA REPORT CHATBOT"
+  env: "PRODUCTION"
+
+spec:
+  num_workers: 4

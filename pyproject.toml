@@ -23,7 +23,8 @@ dependencies = [
     "psutil",
     "python-telegram-bot",
     "colorama",
-    "types-colorama"
+    "types-colorama",
+    "pretty-errors"
 ]
 
 [build-system]

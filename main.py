@@ -14,10 +14,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from dependency_injector.wiring import Provide, inject
 
 from src.module.application_container import ApplicationContainer
-from src.service.interface.arb_service.arb_service import ARBService
-from src.controller.arb_controller import arb_router, health_check_router
-from src.controller.arb_key_controller import key_router
-from src.controller import arb_controller, arb_key_controller
+from src.controller.arb_service_controller import arb_router, health_check_router
+from src.controller.arb_auth_controller import auth_router
+from src.controller.arb_nosql_controller import nosql_router
+from src.controller import arb_service_controller, arb_auth_controller, arb_nosql_controller
 from src.utils.utils import load_yaml
 
 
@@ -47,16 +47,25 @@ def create_app(env: str) -> FastAPI:
 
     modules = [
         sys.modules[__name__]
-        , arb_controller
-        , arb_key_controller
+        , arb_service_controller
+        , arb_auth_controller
+        , arb_nosql_controller
     ]
 
-    application_container.config.from_yaml(f"config/{env}.yml")
+    application_container.report_config.from_json("data/report/alpha_report.json")
+    application_container.service_config.from_yaml(f"config/{env}.yml")
+    application_container.service_config.from_yaml(f"config/service_config/agent_config.yml")
+    application_container.service_config.from_yaml(f"config/service_config/db_config.yml")
+    application_container.service_config.from_yaml(f"config/service_config/auth_config.yml")
+    application_container.service_config.from_yaml(f"config/service_config/llm_config.yml")
     application_container.wire(modules)
+    
     app.container = application_container
     app.include_router(health_check_router, tags=['Health Check'])
     app.include_router(arb_router, prefix="/api/v1", tags=['Report Chatbot'])
-    app.include_router(key_router, prefix="/api/v1", tags=['API Key Authentication'])
+    app.include_router(auth_router, prefix="/api/v1", tags=['API Key Authentication'])
+    app.include_router(nosql_router, prefix="/api/v1", tags=['NoSQL Database'])
+    
     logging.info("Wire completed")
     logging.basicConfig(level=logging.INFO)
 

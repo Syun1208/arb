@@ -1,28 +1,28 @@
-confirmation_agent_config:
-  name: ""
-  task_description: ""
-  llm_model: ""
+confirmation_recognizer_agent_config:
+  name: "Confirmation Recognizer Agent"
+  task_description: "Confirmation Recognizer Agent is a service that recognizes the user's confirmation."
+  llm_model: "qwen2.5:14b"
 
 
 greeting_agent_config:
-  name: ""
-  task_description: ""
-  llm_model: ""
+  name: "Greeting Agent"
+  task_description: "Greeting Agent is a service that greets the user."
+  llm_model: "qwen2.5:14b"
 
 
-greeting_recognizer_config:
-  name: ""
-  task_description: ""
-  llm_model: ""
+greeting_recognizer_agent_config:
+  name: "Greeting Recognizer Agent"
+  task_description: "Greeting Recognizer Agent is a service that recognizes the user's greeting."
+  llm_model: "qwen2.5:14b"
 
 
 report_calling_agent_config:
-  name: ""
-  task_description: ""
-  llm_model: ""
+  name: "Report Calling Agent"
+  task_description: "Report Calling Agent is a service that reports the user's calling."
+  llm_model: "qwen2.5:14b"
 
 
 ner_agent_config:
-  name: ""
-  task_description: ""
-  llm_model: ""
+  name: "NER Agent"
+  task_description: "NER Agent is a service that recognizes the user's NER."
+  llm_model: "qwen2.5:14b"

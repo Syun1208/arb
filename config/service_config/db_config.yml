@@ -1,5 +1,5 @@
 nosql_config:
-  conversation_path: "./data/database/conversation.json"
+  conversation_path: "./data/database/historical_conversation.json"
 
 sql_config:
   aiml_mysql:
