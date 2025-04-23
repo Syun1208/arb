@@ -278,3 +278,20 @@ def fancy_step_tracker(step: int, total_steps: int) -> None:
         total_steps (int): The total number of steps in the loop.
     """
     fancy_print(f"STEP {step + 1}/{total_steps}")
+    
+    
+def format_date(date: str) -> str:
+    """
+    Format the date to YYYY-MM-DD
+    Args:
+        date: The date to format
+    Returns:
+        The formatted date
+    """
+    date_info = date.split('-')
+    day = date_info[0]
+    month = date_info[1]
+    year = date_info[2]
+    if len(year) == 4:
+        return f"{year}-{month}-{day}"
+    return date

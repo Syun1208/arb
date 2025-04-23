@@ -9,7 +9,7 @@ from src.service.interface.arb_slave_agent.ner_agent import NerAgent
 from src.service.interface.arb_slave_agent.report_calling_agent import ReportCallingAgent
 from src.service.interface.arb_slave_agent.greeting_agent import GreetingAgent
 from src.service.interface.arb_service.arb_db_service import ARBDBService
-from src.utils.utils import format_entities_for_prompt
+from src.utils.utils import format_entities_for_prompt, format_date
 from src.utils.constants import FUNCTION_MAPPING_NAME
 
 class AgentComposerImpl(AgentComposer):
@@ -77,29 +77,15 @@ class AgentComposerImpl(AgentComposer):
                 updated_params[key] = previous_params[key]
         return updated_params
 
-    def __format_date(self, date: str) -> str:
-        """
-        Format the date to YYYY-MM-DD
-        Args:
-            date: The date to format
-        Returns:
-            The formatted date
-        """
-        date_info = date.split('-')
-        day = date_info[0]
-        month = date_info[1]
-        year = date_info[2]
-        if len(year) == 4:
-            return f"{year}-{month}-{day}"
-        return date
-
-    def __run_agent(self, agent: Any, method: str, arg: str) -> Any:
+    @staticmethod
+    def __run_agent(agent: Any, method: str, arg: str) -> Any:
         """
         Run the agent with the method and argument
         """
         return getattr(agent, method)(arg)
     
-    def __get_status_code(self, params: Optional[Dict[str, str]], endpoint: Optional[str]) -> AlphaStatusCode:
+    @staticmethod
+    def __get_status_code(params: Optional[Dict[str, str]], endpoint: Optional[str]) -> AlphaStatusCode:
         """
         Get the status code
         """
@@ -137,7 +123,6 @@ class AgentComposerImpl(AgentComposer):
         # Initialize the flags
         is_new_session = False
         is_action = False
-        alpha_status_code = None
         alpha_status_code = AlphaStatusCode(status_code=200, message="Success")
         
         is_normal_conversation = self.greeting_recognizer_agent.get_decision(message)
@@ -191,7 +176,7 @@ class AgentComposerImpl(AgentComposer):
             # Define the normal conversation
             if is_action:
                 is_normal_conversation = False
-                alpha_status_code = self.__get_status_code(update_entities, function_called)
+                # alpha_status_code = self.__get_status_code(update_entities, function_called)
                 
             print('🤖 is_normal_conversation: ', is_normal_conversation)
             
@@ -290,9 +275,9 @@ class AgentComposerImpl(AgentComposer):
             # BUG: Format date to YYYY-MM-DD
             if alpha_metadata.params.from_date != "N/A":
                 alpha_metadata.params.from_date = alpha_metadata.params.from_date.replace("/", "-") 
-                alpha_metadata.params.from_date = self.__format_date(alpha_metadata.params.from_date)
+                alpha_metadata.params.from_date = format_date(alpha_metadata.params.from_date)
                 alpha_metadata.params.to_date = alpha_metadata.params.to_date.replace("/", "-")
-                alpha_metadata.params.to_date = self.__format_date(alpha_metadata.params.to_date)
+                alpha_metadata.params.to_date = format_date(alpha_metadata.params.to_date)
             
             
             print("👻 Params insert into database: \n")
@@ -338,6 +323,6 @@ class AgentComposerImpl(AgentComposer):
                 params=None,
                 response=response
             )
-            alpha_status_code = AlphaStatusCode(status_code=104, message="Casual conversation")
+            # alpha_status_code = AlphaStatusCode(status_code=104, message="Casual conversation")
             
         return alpha_metadata, alpha_status_code

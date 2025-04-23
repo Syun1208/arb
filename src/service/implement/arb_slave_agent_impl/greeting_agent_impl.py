@@ -46,7 +46,7 @@ class GreetingAgentImpl(GreetingAgent):
     def chat(self, message: str) -> str:
         
         user_prompt = self.user_prompt.format(
-            query=message,
+            message=message,
             instruction=self.instruction,
             few_shot=self.few_shot
         )

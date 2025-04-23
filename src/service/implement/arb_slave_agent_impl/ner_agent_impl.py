@@ -51,7 +51,6 @@ class NerAgentImpl(NerAgent):
     def __get_parameter_properties(self) -> str:
         parameter_properties = []
         for func_info in self.report_config:
-            function_name = func_info['name']
             parameter_properties = func_info['parameters']['properties']
             for key, value in parameter_properties.items():
                 if value['enum'] is None:

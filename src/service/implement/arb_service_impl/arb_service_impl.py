@@ -27,4 +27,5 @@ class ARBServiceImpl(ARBService):
         self.agent_composer = agent_composer
 
     async def chat(self, user_id: str, message: str) -> Tuple[AlphaMetadata, AlphaStatusCode]:
-        return await self.agent_composer.compose(user_id, message)
+        alpha_metadata, alpha_status_code = await self.agent_composer.compose(user_id, message)
+        return alpha_metadata, alpha_status_code

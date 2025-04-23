@@ -12,7 +12,7 @@ from src.service.interface.arb_service.arb_auth_service import ARBAuthService
 from src.module.application_container import ApplicationContainer
 from src.utils.constants import DEPARTMENT_MAPPING_NAME
 
-auth_router = APIRouter(tags=["API Key Authorization"])
+auth_router = APIRouter(tags=["API Key Authentication & Authorization"])
 
 
 @auth_router.get('/{department}/generate_key')
@@ -55,16 +55,16 @@ async def generate_key(
         print(traceback.format_exc())
         return JSONResponse(
                 content=jsonable_encoder({
-                    'status_code': 500,
+                    'status_code': HTTP_500_INTERNAL_SERVER_ERROR,
                     'error_message': traceback.format_exc(),
                     "data": None
                 }),
-                status_code=500
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR
             )
     
-@auth_router.get("/authorize")
+@auth_router.get("/authenticate")
 @inject
-async def authorize(
+async def authenticate(
     api_key: str,
     arb_auth_service: ARBAuthService = Depends(Provide[ApplicationContainer.arb_auth_service])
 ) -> JSONResponse:
@@ -78,7 +78,7 @@ async def authorize(
                     "status_code": HTTP_200_OK, 
                     "error_message": "",
                     "data": {
-                        "message": "Authorized"
+                        "message": "Authenticated"
                     }
                 }),
                 status_code=HTTP_200_OK
@@ -87,7 +87,7 @@ async def authorize(
             return JSONResponse(
                 content=jsonable_encoder({
                     "status_code": HTTP_401_UNAUTHORIZED, 
-                    "error_message": "Unauthorized",
+                    "error_message": "Unauthenticated",
                     "data": None
                 }),
                 status_code=HTTP_401_UNAUTHORIZED
@@ -98,11 +98,11 @@ async def authorize(
         print(traceback.format_exc())
         return JSONResponse(
                 content=jsonable_encoder({
-                    'status_code': 500,
+                    'status_code': HTTP_500_INTERNAL_SERVER_ERROR,
                     'error_message': traceback.format_exc(),
                     "data": None
                 }),
-                status_code=500
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 @auth_router.delete("/{department}/delete_key")
@@ -131,11 +131,11 @@ async def delete_key(
         print(traceback.format_exc())
         return JSONResponse(
                 content=jsonable_encoder({
-                    'status_code': 500,
+                    'status_code': HTTP_500_INTERNAL_SERVER_ERROR,
                     'error_message': traceback.format_exc(),
                     "data": None
                 }),
-                status_code=500
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR
             )
         
         
@@ -165,11 +165,11 @@ async def get_key(
         print(traceback.format_exc())
         return JSONResponse(
                 content=jsonable_encoder({
-                    'status_code': 500,
+                    'status_code': HTTP_500_INTERNAL_SERVER_ERROR,
                     'error_message': traceback.format_exc(),
                     "data": None
                 }),
-                status_code=500
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR
             )
     
 @auth_router.put("/{department}/update_key")
