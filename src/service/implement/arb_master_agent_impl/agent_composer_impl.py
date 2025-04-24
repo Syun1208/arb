@@ -125,8 +125,13 @@ class AgentComposerImpl(AgentComposer):
         is_action = False
         alpha_status_code = AlphaStatusCode(status_code=200, message="Success")
         
-        is_normal_conversation = self.greeting_recognizer_agent.get_decision(message)
-        is_confirmed = self.confirmation_recognizer_agent.get_decision(message)
+        with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+            is_normal_conversation_future = executor.submit(self.greeting_recognizer_agent.get_decision, message)
+            is_confirmed_future = executor.submit(self.confirmation_recognizer_agent.get_decision, message)
+            
+            is_normal_conversation = is_normal_conversation_future.result()
+            is_confirmed = is_confirmed_future.result()
+            
         if is_confirmed:
             is_normal_conversation = False
         
