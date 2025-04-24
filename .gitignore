@@ -7,5 +7,5 @@
 **/*notebook/career_images/*
 clean.py
 **/*.csv
-**/*.json
+data/nosql/historical_conversation.json
 **/*arb/

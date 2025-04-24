@@ -1,0 +1,198 @@
+[
+    {
+        "type": "function",
+        "function": {
+        "name": "/get_winlost_report",
+        "friendly_name": "Get Win/Lost Detail Report",
+        "abbreviation": ["W/L Detail Report", "W/L Detail", "W/L", "W/L Report", "W/L Report Detail", "W/L Report Detail Report"],
+        "description": "Get Win/Loss reports. Supports exporting reports (CSV/PDF), comparing trends across time periods, highlighting biggest winners/losers, and detecting unusual betting patterns.",
+        "parameters": {
+                "type": "object",
+                "properties": {
+                    "from_date": {
+                        "friendly_name": "The start date",
+                        "type": "string",
+                        "description": "This is the start date argument for the report (YYYY-MM-DD)",
+                        "enum": null
+                    },
+                    "to_date": {
+                        "friendly_name": "The end date",
+                        "type": "string",
+                        "description": "This is the end date argument for the report (YYYY-MM-DD)",
+                        "enum": null
+                    },
+                    "product": {
+                        "friendly_name": "The type of product",
+                        "type": "string",
+                        "default": "All",
+                        "enum": [
+                            "All", "Sportsbook", "Number Game", "Virtual Sports", "Saba Casino", "RNG Keno", "AG Casino","Sportsbook 2",
+                            "RNG Slot","Cricket","Allbet","Macau Games","Cash Out","Lottery","Voidbrige Jackpot","Exchange","PP","Arcadia Gaming",
+                            "SG","Saba Promotion","Virtual Games","SA Gaming","Table Game","Live Casino","SABA.games","Togel 4D","RNG Games","AE Sexy",
+                            "IBCBet Live Casino","BBIN","GPI","WM","ION","RNG Casino","Saba Virtual Sports","PG Soft","Joker","BG","MaxGame","Habanero",
+                            "CG","Sports Lottery","Virtual Games","PP Live Casino","Vgaming","AdvantPlay","AdvantPlay Mini","Bitcoin","FGG","SEAL Entertainment",
+                            "MG-RNG","Player Tips","Jili","YeeBet","UU SLOTS","Live22","WE Live Casino","Saba Coins","Yolo Play","Nextspin","SABA xD",
+                            "FastSpin","FA CHAI","GPI Live Casino","PLAYSTAR","HOTDOG","ON Casino","Smartsoft","Playtech","SABA Keno","ASKMESLOT","Funky Games", 
+                            "Live Casino", "RNG Casino"
+                        ],
+                        "abbreviation": {
+                            "Sportsbook": ["SB", "SprtBooks"],
+                            "Number Game": ["NG"],
+                            "Virtual Sports": ["VS"],
+                            "Saba Casino": ["SC"],
+                            "RNG Keno": ["RNGK"],
+                            "AG Casino": ["AGC"],
+                            "Sportsbook 2": ["SB2"]
+                        },
+                        "constraint": {
+                            "Sportsbook": {
+                                "property": "product_detail",
+                                "item": ["SABA Basketball", "SABA Basketball PinGoal", "SABA E-Sports PinGoal", "SABA Other Sports", "SABA Soccer", "SABA Soccer PinGoal", "SABA Tennis"]
+                            }
+                        },
+                        "description": "This is the type of product filter for the report (default: All)"
+                    },
+                    "product_detail": {
+                        "friendly_name": "The type of product detail",
+                        "type": "string",
+                        "default": "All",
+                        "enum": [
+                            "All", "SABA Basketball", "SABA Basketball PinGoal", "SABA E-Sports PinGoal", "SABA Other Sports", "SABA Soccer", "SABA Soccer PinGoal",
+                            "SABA Tennis", "Sportsbook", "Allbet Promotion", "PP Jackpot Contribution", "PP Jackpot Prize", "SG Jackpot Contribution",
+                            "SG Jackpot Prize", "AE Sexy Lucky Draw", "Vgaming Promotion Prize", "MG-RNG Promotion Prize", "Live22 Promotion Prize",
+                            "AE Sexy Lucky Draw", "Vgaming Promotion Prize", "MG-RNG Promotion Prize","Live22 Promotion Prize", "FastSpin Promotion Prize",
+                            "FA CHAI Promotion Prize", "ASKMESLOT Promotion Prize"
+                        ],
+                        "abbreviation": {
+                            "SABA Basketball": ["SBB"],
+                            "SABA Basketball PinGoal": ["SBBPG"],
+                            "SABA E-Sports PinGoal": ["SBEPG"],
+                            "SABA Other Sports": ["SAOS"],
+                            "SABA Soccer": ["SS"]
+                        },
+                        "description": "This is the type of product detail filter for the report (default: All)"
+                    },
+                    "level": {
+                        "friendly_name": "The type of level",
+                        "type": "string",
+                        "default": "All",
+                        "enum": ["All", "Super Agent", "Master Agent", "Agent", "Direct Member"],
+                        "abbreviation": {
+                            "Super Agent": ["SA"],
+                            "Master Agent": ["MA"],
+                            "Agent": ["AG"],
+                            "Direct Member": ["DM"]
+                        },
+                        "description": "Filter by level of user's member or all downlines (default: All)."
+                    },
+                    "user": {
+                        "friendly_name": "The specific user name",
+                        "type": "string",
+                        "description": " Filter by a specific user name or all downlines",
+                        "default": null,
+                        "enum": null
+                    }
+                },
+                "required": ["from_date", "to_date"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+        "name": "/get_turnover_report",
+        "friendly_name": "Get Win/Lost Detail Report",
+        "abbreviation": ["W/L Detail Report", "W/L Detail", "W/L", "W/L Report", "W/L Report Detail", "W/L Report Detail Report"],
+        "description": "Get turnover/revenue reports showing total betting volume/activity. Includes trend analysis and comparison features.",
+        "parameters": {
+                "type": "object",
+                "properties": {
+                    "from_date": {
+                        "friendly_name": "The start date",
+                        "type": "string",
+                        "description": "This is the start date argument for the report (YYYY-MM-DD)",
+                        "enum": null
+                    },
+                    "to_date": {
+                        "friendly_name": "The end date",
+                        "type": "string",
+                        "description": "This is the end date argument for the report (YYYY-MM-DD)",
+                        "enum": null
+                    },
+                    "product": {
+                        "friendly_name": "The type of product",
+                        "type": "string",
+                        "default": "All",
+                        "enum": [
+                            "All", "Sportsbook", "Number Game", "Virtual Sports", "Saba Casino", "RNG Keno", "AG Casino","Sportsbook 2",
+                            "RNG Slot","Cricket","Allbet","Macau Games","Cash Out","Lottery","Voidbrige Jackpot","Exchange","PP","Arcadia Gaming",
+                            "SG","Saba Promotion","Virtual Games","SA Gaming","Table Game","Live Casino","SABA.games","Togel 4D","RNG Games","AE Sexy",
+                            "IBCBet Live Casino","BBIN","GPI","WM","ION","RNG Casino","Saba Virtual Sports","PG Soft","Joker","BG","MaxGame","Habanero",
+                            "CG","Sports Lottery","Virtual Games","PP Live Casino","Vgaming","AdvantPlay","AdvantPlay Mini","Bitcoin","FGG","SEAL Entertainment",
+                            "MG-RNG","Player Tips","Jili","YeeBet","UU SLOTS","Live22","WE Live Casino","Saba Coins","Yolo Play","Nextspin","SABA xD",
+                            "FastSpin","FA CHAI","GPI Live Casino","PLAYSTAR","HOTDOG","ON Casino","Smartsoft","Playtech","SABA Keno","ASKMESLOT","Funky Games", 
+                            "Live Casino", "RNG Casino"
+                        ],
+                        "abbreviation": {
+                            "Sportsbook": ["SB", "SprtBooks"],
+                            "Number Game": ["NG"],
+                            "Virtual Sports": ["VS"],
+                            "Saba Casino": ["SC"],
+                            "RNG Keno": ["RNGK"],
+                            "AG Casino": ["AGC"],
+                            "Sportsbook 2": ["SB2"]
+                        },
+                        "constraint": {
+                            "Sportsbook": {
+                                "property": "product_detail",
+                                "item": ["SABA Basketball", "SABA Basketball PinGoal", "SABA E-Sports PinGoal", "SABA Other Sports", "SABA Soccer", "SABA Soccer PinGoal", "SABA Tennis"]
+                            }
+                        },
+                        "description": "This is the type of product filter for the report (default: All)"
+                    },
+                    "product_detail": {
+                        "friendly_name": "The type of product detail",
+                        "type": "string",
+                        "default": "All",
+                        "enum": [
+                            "All", "SABA Basketball", "SABA Basketball PinGoal", "SABA E-Sports PinGoal", "SABA Other Sports", "SABA Soccer", "SABA Soccer PinGoal",
+                            "SABA Tennis", "Sportsbook", "Allbet Promotion", "PP Jackpot Contribution", "PP Jackpot Prize", "SG Jackpot Contribution",
+                            "SG Jackpot Prize", "AE Sexy Lucky Draw", "Vgaming Promotion Prize", "MG-RNG Promotion Prize", "Live22 Promotion Prize",
+                            "AE Sexy Lucky Draw", "Vgaming Promotion Prize", "MG-RNG Promotion Prize","Live22 Promotion Prize", "FastSpin Promotion Prize",
+                            "FA CHAI Promotion Prize", "ASKMESLOT Promotion Prize"
+                        ],
+                        "abbreviation": {
+                            "SABA Basketball": ["SBB"],
+                            "SABA Basketball PinGoal": ["SBBPG"],
+                            "SABA E-Sports PinGoal": ["SBEPG"],
+                            "SABA Other Sports": ["SAOS"],
+                            "SABA Soccer": ["SS"]
+                        },
+                        "description": "This is the type of product detail filter for the report (default: All)"
+                    },
+                    "level": {
+                        "friendly_name": "The type of level",
+                        "type": "string",
+                        "default": "All",
+                        "enum": ["All", "Super Agent", "Master Agent", "Agent", "Direct Member"],
+                        "abbreviation": {
+                            "Super Agent": ["SA"],
+                            "Master Agent": ["MA"],
+                            "Agent": ["AG"],
+                            "Direct Member": ["DM"]
+                        },
+                        "description": "Filter by level of user's member or all downlines (default: All)."
+                    },
+                    "user": {
+                        "friendly_name": "The specific user name",
+                        "type": "string",
+                        "description": " Filter by a specific user name or all downlines",
+                        "default": null,
+                        "enum": null
+                    }
+                },
+                "required": ["from_date", "to_date"]
+            }
+        }
+    }
+]
