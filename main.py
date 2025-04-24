@@ -63,7 +63,7 @@ def create_app(env: str) -> FastAPI:
     app.container = application_container
     app.include_router(health_check_router, tags=['Health Check'])
     app.include_router(arb_router, prefix="/api/v1", tags=['Report Chatbot'])
-    app.include_router(auth_router, prefix="/api/v1", tags=['API Key Authentication'])
+    app.include_router(auth_router, prefix="/api/v1", tags=['API Key Authentication & Authorization'])
     app.include_router(nosql_router, prefix="/api/v1", tags=['NoSQL Database'])
     
     logging.info("Wire completed")

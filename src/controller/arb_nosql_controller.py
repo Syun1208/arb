@@ -10,7 +10,7 @@ from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_4
 from src.module.application_container import ApplicationContainer
 from src.service.interface.arb_service.arb_db_service import ARBDBService
 
-nosql_router = APIRouter(tags=["NoSQL Controller"])
+nosql_router = APIRouter(tags=["NoSQL Database"])
 
 
 @nosql_router.post("/insert")
