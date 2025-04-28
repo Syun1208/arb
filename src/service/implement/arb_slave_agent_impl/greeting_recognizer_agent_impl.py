@@ -2,7 +2,7 @@ import json
 from typing import Dict, Any, List
 
 from src.service.interface.arb_supporter.llm import LLM
-from src.utils.constants import GreetingRecognizerAgentConfig
+from src.service.implement.arb_supporter_impl.prompt_impl import GreetingRecognizerAgentConfig
 from src.service.interface.arb_slave_agent.recognizer_agent import RecognizerAgent
 
 class GreetingRecognizerAgentImpl(RecognizerAgent):
@@ -14,6 +14,7 @@ class GreetingRecognizerAgentImpl(RecognizerAgent):
         name: str,
         task_description: str,
         report_config: Dict[str, Any],
+        agent_config: GreetingRecognizerAgentConfig,
         tools: List[Any]
     ) -> None:
         """
@@ -33,26 +34,21 @@ class GreetingRecognizerAgentImpl(RecognizerAgent):
         self.model = model
         self.name = name
         self.task_description = task_description
-        self.agent_config = GreetingRecognizerAgentConfig()
+        self.agent_config = agent_config()
         self.format_schema = self.agent_config.format_schema
         self.system_prompt = self.agent_config.system_prompt
-        self.user_prompt = self.agent_config.user_prompt
-        self.instruction = self.agent_config.instruction
-        self.few_shot = self.agent_config.few_shot
         self.report_config = report_config
         self.tools = tools
 
+    def __repr__(self) -> str:
+        return f"{self.name}: {self.task_description}"
 
     def get_decision(
         self,
         query: str
     ) -> Dict[str, int]:
 
-        user_prompt = self.user_prompt.format(
-            query=query,
-            instruction=self.instruction,
-            few_shot=self.few_shot
-        )
+        user_prompt = self.agent_config.format_prompt(query=query)
 
         messages = [
             {"role": "system", "content": self.system_prompt},

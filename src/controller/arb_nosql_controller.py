@@ -1,11 +1,10 @@
 import traceback
-import secrets
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from dependency_injector.wiring import inject, Provide
 from fastapi.encoders import jsonable_encoder
 from fastapi import Depends
-from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR
 
 from src.module.application_container import ApplicationContainer
 from src.service.interface.arb_service.arb_db_service import ARBDBService
@@ -132,3 +131,30 @@ async def delete(
             }),
             status_code=HTTP_500_INTERNAL_SERVER_ERROR
         )
+        
+@nosql_router.get('/clean_conversation')
+@inject
+async def clean_conversation(
+    arb_db_service: ARBDBService = Depends(Provide[ApplicationContainer.arb_db_service])    
+) -> JSONResponse:
+    
+    try:  
+        arb_db_service.clean_conversation()
+        return JSONResponse(
+            content=jsonable_encoder({
+                'status_code': HTTP_200_OK,
+                'error_message': "",
+                'data': None}),
+            status_code=HTTP_200_OK
+        )
+    
+    except Exception as e:
+        print(traceback.format_exc())
+        return JSONResponse(
+            content=jsonable_encoder({
+                'status_code': HTTP_500_INTERNAL_SERVER_ERROR,
+                'error_message': traceback.format_exc(),
+            }),
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        

@@ -6,7 +6,7 @@ from colorama import Fore
 from colorama import Style
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 
 def load_yaml(file_path: str):
@@ -295,3 +295,19 @@ def format_date(date: str) -> str:
     if len(year) == 4:
         return f"{year}-{month}-{day}"
     return date
+
+
+def flatten_list_2d(list_2d: List[List[Any]]) -> List[Any]:
+    """
+    Flatten a 2D list into a 1D list.
+    
+    Args:
+        list_2d (List[List[Any]]): The 2D list to flatten
+        
+    Returns:
+        List[Any]: The flattened 1D list
+    """
+    return [item for sublist in list_2d for item in sublist]
+
+
+    

@@ -2,10 +2,10 @@ import json
 from typing import List, Dict, Any
 
 
-from src.utils.constants import NERAgentConfig
 from src.service.interface.arb_supporter.llm import LLM
 from src.service.interface.arb_slave_agent.ner_agent import NerAgent
-from src.utils.utils import get_current_date, get_current_year, get_current_month
+from src.service.implement.arb_supporter_impl.prompt_impl import NerAgentConfig
+from src.utils.utils import flatten_list_2d
 
 class NerAgentImpl(NerAgent):
     """
@@ -19,6 +19,7 @@ class NerAgentImpl(NerAgent):
         name: str,
         task_description: str,
         report_config: Dict[str, Any],
+        agent_config: NerAgentConfig,
         tools: List[Any]
     ) -> None:
         """
@@ -39,29 +40,67 @@ class NerAgentImpl(NerAgent):
         self.model = model
         self.name = name
         self.task_description = task_description
-        self.agent_config = NERAgentConfig()
-        self.format_schema = self.agent_config.format_schema
-        self.system_prompt = self.agent_config.system_prompt
-        self.user_prompt = self.agent_config.user_prompt
-        self.instruction = self.agent_config.instruction
-        self.few_shot = self.agent_config.few_shot
+        self.agent_config = agent_config()
         self.report_config = report_config
         self.tools = tools
-
-    def __get_parameter_properties(self) -> str:
-        parameter_properties = []
-        for func_info in self.report_config:
-            parameter_properties = func_info['parameters']['properties']
-            for key, value in parameter_properties.items():
-                if value['enum'] is None:
+        
+        
+    def __repr__(self) -> str:
+        return f"{self.name}: {self.task_description}"
+    
+    
+    def __get_parameter_properties(self, function_called: str) -> str:
+        func_info = self.report_config[function_called]
+        
+        parameter_info = []
+        parameter_properties = func_info['function']['parameters']['properties']
+        for key, value in parameter_properties.items():
+                if value['enum'] is not None:
+                    abbreviation = flatten_list_2d(value['abbreviation'].values())
+                    abbreviation_str = ", ".join(abbreviation)
                     value2str = ", ".join(value['enum'])
-                    format_schema = f"### {key.upper()}: {value2str}"
-                    parameter_properties.append(format_schema)
-            
-        parameter_properties_to_string = "\n".join(parameter_properties)
-        return parameter_properties_to_string
+                    parameter_properties_to_string = f"### {key.upper()}: {value2str}, {abbreviation_str}"
+                    parameter_info.append(parameter_properties_to_string)
+        
+        parameter_info_to_string = "\n".join(parameter_info)
+        return parameter_info_to_string
 
-    def extract_entities(self, query: str) -> Dict[str, Any]:
+
+    def __get_default_value(self, function_called: str) -> str:
+        func_info = self.report_config[function_called]
+        parameter_properties = func_info['function']['parameters']['properties']
+        
+        default_value = {}
+        for key, value in parameter_properties.items():
+            default_value[key] = value['default']
+        return default_value
+    
+    
+    def __get_abbreviation(self, function_called: str) -> str:
+        func_info = self.report_config[function_called]
+        properties = func_info['function']['parameters']['properties']
+        
+        abbreviation = []
+        for key, value in properties.items():
+            if "abbreviation" in value:
+                subabbreviation = []
+                
+                abbreviation_dict = value['abbreviation']
+                for product, abbr_list in abbreviation_dict.items():
+                    abbreviation_str = ", ".join(abbr_list)
+                    subabbreviation.append(f"- {product}: {abbreviation_str}")
+                subabbreviation_str = "\n".join(subabbreviation)
+                format_abbreviation = f"""
+                #### {key}:
+                {subabbreviation_str}
+                """
+                abbreviation.append(format_abbreviation)
+                
+        abbreviation_str = "\n".join(abbreviation)
+        return abbreviation_str
+    
+    
+    def extract_entities(self, query: str, function_called: str) -> Dict[str, Any]:
         """
         Process the input text and extract named entities using Ollama API.
         
@@ -72,51 +111,29 @@ class NerAgentImpl(NerAgent):
             Dict[str, Any]: Dictionary containing extracted entities and their metadata
         """
         
-        parameter_properties = self.__get_parameter_properties()
+        parameter_properties = self.__get_parameter_properties(function_called)
+        # abbreviation = self.__get_abbreviation(function_called)
+        agent = self.agent_config.get_agent(function_called)
         
-        current_date = get_current_date()
-        current_year = get_current_year()   
-        current_month = get_current_month()
-   
-        user_prompt = self.user_prompt.format(
-            query=query, 
-            current_date=current_date,
-            current_year=current_year,
-            current_month=current_month,
-            instruction=self.instruction.format(
-                query=query,
-                current_date=current_date,
-                current_year=current_year,
-                current_month=current_month,
-                parameter_properties=parameter_properties
-            ), 
-            few_shot=self.few_shot.format(
-                current_month=current_month,
-                current_year=current_year,
-            )
+        user_prompt = agent.format_prompt(
+            query=query,
+            parameter_properties=parameter_properties,
+            # abbreviation=abbreviation
         )
-        
+        print(user_prompt)
         messages = [
-            {"role": "system", "content": self.system_prompt},
+            {"role": "system", "content": agent.system_prompt},
             {"role": "user", "content": user_prompt}
         ]
 
         response = self.llm.invoke(
             messages=messages,
-            format_schema=self.format_schema,
+            format_schema=agent.format_schema,
             model=self.model,
             endpoint='/api/chat'
         )
         
         if not json.loads(response):
-            return {
-                "date_range": "N/A",
-                "from_date": "N/A",
-                "to_date": "N/A",
-                "product": "All",
-                "product_detail": "All",
-                "level": "All",
-                "user": "N/A"
-            }
+            return self.__get_default_value(function_called)
             
         return json.loads(response)

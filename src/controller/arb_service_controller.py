@@ -103,4 +103,3 @@ async def chat(
                 }),
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR
             )
-

@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 
 from src.model.alpha_metadata import AlphaMetadata, Params
 from src.model.alpha_status_code import AlphaStatusCode
@@ -51,10 +52,11 @@ class AgentComposerImpl(AgentComposer):
 
         
     @staticmethod
-    def __update_entities(previous_params: Dict[str, str], current_params: Dict[str, str]) -> Dict[str, str]:
+    def __update_entities(function_called: str, previous_params: Dict[str, str], current_params: Dict[str, str]) -> Dict[str, str]:
         """
         Update the params from the from_params to the to_params
         Args:
+            function_called: The function called
             previous_params: The previous params
             current_params: The current params
         Returns:
@@ -63,27 +65,26 @@ class AgentComposerImpl(AgentComposer):
         if not previous_params:
             return current_params
         
-        del current_params['date_range']
+        if 'date_range' in current_params:
+            del current_params['date_range']
+            
         updated_params = current_params.copy()
         
-        if current_params['from_date'] != 'N/A':
-            updated_params['from_date'] = current_params['from_date']
+        if function_called in ["winlost_detail", "turnover"]:
             
-        if current_params['to_date'] != 'N/A':
-            updated_params['to_date'] = current_params['to_date']
+            if current_params['from_date'] != 'N/A':
+                updated_params['from_date'] = current_params['from_date']
+            
+            if current_params['to_date'] != 'N/A':
+                updated_params['to_date'] = current_params['to_date']
         
         for key, value in updated_params.items():
-            if value == "N/A" or value == 'All':
+            if value == "N/A" or value == 'All' or value == 10:
                 updated_params[key] = previous_params[key]
+                
         return updated_params
-
-    @staticmethod
-    def __run_agent(agent: Any, method: str, arg: str) -> Any:
-        """
-        Run the agent with the method and argument
-        """
-        return getattr(agent, method)(arg)
-    
+        
+        
     @staticmethod
     def __get_status_code(params: Optional[Dict[str, str]], endpoint: Optional[str]) -> AlphaStatusCode:
         """
@@ -107,6 +108,53 @@ class AgentComposerImpl(AgentComposer):
             return AlphaStatusCode(status_code=413, message="From date is required when to date is provided")
         
         return AlphaStatusCode(status_code=209, message="Confirmation is accepted")
+
+    @staticmethod
+    def  __get_winlost_turnover_params_prompt(entities: Dict[str, str]) -> str:
+        """
+        Get the winlost turnover params prompt
+        """
+        return f"""
+📅 Date Range: {entities['from_date']} - {entities['to_date']}
+🏢 Product: {entities['product']} 
+📋 Product Detail: {entities['product_detail']}
+🎮 Level: {entities['level']}
+👤 Username: {entities['user']}"""
+
+    @staticmethod
+    def __get_outstanding_top_outstanding_params_prompt(entities: Dict[str, str]) -> str:
+        """
+        Get the outstanding top outstanding params prompt
+        """
+        return f"""
+🏢 Product: {entities['product']} 
+👤 Username: {entities['user']}"""
+
+    @staticmethod
+    def __get_top_outstanding_params_prompt(entities: Dict[str, str]) -> str:
+        """
+        Get the top outstanding params prompt
+        """
+        return f"""
+🏢 Product: {entities['product']}
+🔝 Top: {entities['top']}"""
+
+
+    def __get_base_params(self, function_called: str, entities: Dict[str, str]) -> str:
+        """
+        Get the base params
+        """
+
+        base_params = {
+            "/winlost_detail": self.__get_winlost_turnover_params_prompt,
+            "/turnover": self.__get_winlost_turnover_params_prompt,
+            "/outstanding": self.__get_outstanding_top_outstanding_params_prompt,
+            "/topoutstanding": self.__get_top_outstanding_params_prompt
+        }
+        
+        return base_params[function_called](entities)
+        
+ 
 
     async def compose(self, user_id: str, message: str) -> Tuple[AlphaMetadata, AlphaStatusCode]:
         """
@@ -136,16 +184,9 @@ class AgentComposerImpl(AgentComposer):
             is_normal_conversation = False
         
         if not is_normal_conversation:
-            # Run agents in parallel using thread pool
-            with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
-                # Submit all tasks
-                entity_future = executor.submit(self.__run_agent, self.ner_agent, 'extract_entities', message)
-                function_future = executor.submit(self.__run_agent, self.report_calling_agent, 'call_report', message)
-                
-                # Get results as they complete
-                entities = entity_future.result()
-                function_called = function_future.result()
-            
+
+            # Get entities following to the function called
+            function_called = self.report_calling_agent.call_report(message)
             
             # Convert endpoint to None if it is N/A
             if function_called == "N/A":
@@ -155,14 +196,11 @@ class AgentComposerImpl(AgentComposer):
             
             # Get the latest function
             previous_function = None
-            previous_params = {}
+            previous_entities = {}
             if self.database.get(user_id):
                 user_database = self.database.get(user_id)
                 previous_function = user_database[-1]['endpoint']
-                previous_params = user_database[-1]['params']
-            
-            # Update the params
-            update_entities = self.__update_entities(previous_params, entities)
+                previous_entities = user_database[-1]['params']            
 
 
             # Case 1: is_action            
@@ -177,6 +215,7 @@ class AgentComposerImpl(AgentComposer):
             print('🤖 previous_function: ', previous_function)
             print('🤖 function_called updated: ', function_called)
             function_name = FUNCTION_MAPPING_NAME[function_called]
+    
             
             # Define the normal conversation
             if is_action:
@@ -193,26 +232,24 @@ class AgentComposerImpl(AgentComposer):
                     metadata=[]
                 )
             
+            # Extract and update the entities
+            entities = self.ner_agent.extract_entities(message, function_called)
+            
             if not is_new_session:
-                entities = update_entities
+                entities = self.__update_entities(function_called, previous_entities, entities)
                 
             # Generate response based on tasks, entities and confirmation
             # Check if date range is specified
             message_non_date = ""
-            if entities['from_date'] == 'N/A':
+            if function_called in ["/winlost_detail", "/turnover"] and  entities['from_date'] == 'N/A':
                 message_non_date = "❌ Please specify the date range for your request to proceed with generating the report."
 
             # Build base response with parameters
-            base_params = f"""
-📅 Date Range: {entities['from_date']} - {entities['to_date']}
-🏢 Product: {entities['product']} 
-📋 Product Detail: {entities['product_detail']}
-🎮 Level: {entities['level']}
-👤 Username: {entities['user']}"""
+            base_params = self.__get_base_params(function_called, entities)
 
             # Handle action case
             if is_action:
-                if entities['from_date'] == 'N/A':
+                if function_called in ["/winlost_detail", "/turnover"] and entities['from_date'] == 'N/A':
                     response = f"""
 ⚠️ NOTE THAT: 
     📅 From Date: REQUIRED
@@ -254,18 +291,13 @@ class AgentComposerImpl(AgentComposer):
             print(f'🤖 Response: {response}\n') 
                 
             print('🤖 current_params: \n', format_entities_for_prompt(entities))
-            print('🤖 previous_params: \n', format_entities_for_prompt(previous_params))
+            print('🤖 previous_entities: \n', format_entities_for_prompt(previous_entities))
                 
             print("🩻 is_new_session: ", is_new_session)
             # Create params
-            params = Params(
-                from_date=entities['from_date'],
-                to_date=entities['to_date'],
-                product=entities['product'],
-                product_detail=entities['product_detail'],
-                level=entities['level'],
-                user=entities['user']
-            )
+            params = Params()
+            params.set_params(function_called, entities)
+            alpha_params = params.get_params()
             
             # Update the metadata
             alpha_metadata = AlphaMetadata(
@@ -273,25 +305,31 @@ class AgentComposerImpl(AgentComposer):
                 is_new_session=is_new_session,
                 is_action=is_action,
                 endpoint=function_called,
-                params=params,
+                params=alpha_params,
                 response=response
             )
             
             # BUG: Format date to YYYY-MM-DD
-            if alpha_metadata.params.from_date != "N/A":
-                alpha_metadata.params.from_date = alpha_metadata.params.from_date.replace("/", "-") 
-                alpha_metadata.params.from_date = format_date(alpha_metadata.params.from_date)
-                alpha_metadata.params.to_date = alpha_metadata.params.to_date.replace("/", "-")
-                alpha_metadata.params.to_date = format_date(alpha_metadata.params.to_date)
-            
+            if function_called in ["/winlost_detail", "/turnover"]:
+                if alpha_metadata.params.from_date != "N/A":
+                    alpha_metadata.params.from_date = alpha_metadata.params.from_date.replace("/", "-") 
+                    alpha_metadata.params.from_date = format_date(alpha_metadata.params.from_date)
+                    alpha_metadata.params.to_date = alpha_metadata.params.to_date.replace("/", "-")
+                    alpha_metadata.params.to_date = format_date(alpha_metadata.params.to_date)
+         
             
             print("👻 Params insert into database: \n")
             print(format_entities_for_prompt(alpha_metadata.to_dict()))
             
             # Insert the metadata into the database
             metadata_chain = self.database.get(user_id)
+            saved_alpha_metadata = alpha_metadata.to_dict()
+            saved_alpha_metadata['current_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            del saved_alpha_metadata['user_id']
+            del saved_alpha_metadata['response']
+            
             if metadata_chain:
-                metadata_chain.append(alpha_metadata.to_dict())
+                metadata_chain.append(saved_alpha_metadata)
                 self.database.insert(
                     user_id=user_id,
                     metadata=metadata_chain
@@ -299,24 +337,25 @@ class AgentComposerImpl(AgentComposer):
             else:
                 self.database.insert(
                     user_id=user_id,
-                    metadata=[alpha_metadata.to_dict()]
+                    metadata=[saved_alpha_metadata]
                 )
                 
             # Convert field user to None if it is N/A
-            if alpha_metadata.params.user == "N/A":
-                alpha_metadata.params.user = None
+            if function_called in ["/winlost_detail", "/turnover"]:
+                if alpha_metadata.params.user == "N/A":
+                    alpha_metadata.params.user = None
+                
+                if is_action and alpha_metadata.params.from_date == 'N/A':
+                    alpha_metadata.params = None
+                    alpha_metadata.endpoint = None
             
             # Convert params to None if from_date or function_called is N/A
             if not is_action:
                 alpha_metadata.params = None
                 alpha_metadata.endpoint = None
-            
-            if is_action and alpha_metadata.params.from_date == 'N/A':
-                alpha_metadata.params = None
-                alpha_metadata.endpoint = None
                 
             print("👻 Params show for user: \n")
-            print(format_entities_for_prompt(alpha_metadata.to_dict()))
+            print(format_entities_for_prompt(saved_alpha_metadata))
         
         else:
             response = self.greeting_agent.chat(message)

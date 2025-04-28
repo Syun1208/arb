@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from dependency_injector.wiring import Provide, inject
 
+from src.utils.debugger import pretty_errors
 from src.module.application_container import ApplicationContainer
 from src.controller.arb_service_controller import arb_router, health_check_router
 from src.controller.arb_auth_controller import auth_router
@@ -52,7 +53,7 @@ def create_app(env: str) -> FastAPI:
         , arb_nosql_controller
     ]
 
-    application_container.report_config.from_json("data/report/alpha_report.json")
+    application_container.report_config.from_json("data/reports/alpha_report.json")
     application_container.service_config.from_yaml(f"config/{env}.yml")
     application_container.service_config.from_yaml(f"config/service_config/agent_config.yml")
     application_container.service_config.from_yaml(f"config/service_config/db_config.yml")
@@ -71,17 +72,6 @@ def create_app(env: str) -> FastAPI:
 
     return app, config
 
-def setup_di_modules(env: str):
-    modules = [
-        sys.modules[__name__],
-        arb_controller,
-        arb_key_controller
-    ]
-
-    application_container = ApplicationContainer()
-    application_container.config.from_yaml(f"config/{env}.yml")
-    application_container.wire(modules)
-
 
 
 os.environ['APP_MODE'] = sys.argv[1] if len(sys.argv) > 1 else 'development'
@@ -93,6 +83,6 @@ if __name__ == "__main__":
         host=config['server']['http']['host'], 
         port=int(config['server']['http']['port']), 
         reload=True, 
-        workers=psutil.cpu_count(logical=False), 
+        workers=psutil.cpu_count(logical=False) - 2, 
         timeout_keep_alive=20
     )

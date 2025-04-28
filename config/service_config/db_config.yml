@@ -1,5 +1,6 @@
 nosql_config:
   conversation_path: "./data/nosql/historical_conversation.json"
+  expired_time: 1 # hour
 
 sql_config:
   aiml_mysql:

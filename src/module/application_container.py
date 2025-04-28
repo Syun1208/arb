@@ -1,6 +1,7 @@
 from dependency_injector import containers, providers
 from thespian.actors import ActorSystem
 
+from src.service.implement.arb_supporter_impl.prompt_impl import NerAgentConfig, GreetingAgentConfig, GreetingRecognizerAgentConfig, ReportCallingAgentConfig, ConfirmationRecognizerAgentConfig
 
 from src.service.interface.arb_slave_agent.greeting_agent import GreetingAgent
 from src.service.implement.arb_slave_agent_impl.greeting_agent_impl import GreetingAgentImpl
@@ -60,7 +61,8 @@ class ApplicationContainer(containers.DeclarativeContainer):
             ARBDBServiceImpl,
             service_id=service_config.default.service_id,
             nosql_connector=service_config.nosql_config.conversation_path,
-            sql_connector=wasa_aiml_connector
+            sql_connector=wasa_aiml_connector,
+            expired_time=service_config.nosql_config.expired_time
         )
     )
     
@@ -90,6 +92,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
             name=service_config.greeting_agent_config.name,
             task_description=service_config.greeting_agent_config.task_description,
             report_config=report_config,
+            agent_config=GreetingAgentConfig,
             tools=None
         )
     )
@@ -104,6 +107,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
             name=service_config.confirmation_recognizer_agent_config.name,
             task_description=service_config.confirmation_recognizer_agent_config.task_description,
             report_config=report_config,
+            agent_config=ConfirmationRecognizerAgentConfig,
             tools=None
         )
     )
@@ -117,6 +121,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
             name=service_config.greeting_recognizer_agent_config.name,
             task_description=service_config.greeting_recognizer_agent_config.task_description,
             report_config=report_config,
+            agent_config=GreetingRecognizerAgentConfig,
             tools=None
         )
     )
@@ -130,6 +135,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
             name=service_config.ner_agent_config.name,
             task_description=service_config.ner_agent_config.task_description,
             report_config=report_config,
+            agent_config=NerAgentConfig,
             tools=None
         )
     )
@@ -143,6 +149,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
             name=service_config.report_calling_agent_config.name,
             task_description=service_config.report_calling_agent_config.task_description,
             report_config=report_config,
+            agent_config=ReportCallingAgentConfig,
             tools=None
         )
     )

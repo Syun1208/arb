@@ -1,7 +1,7 @@
 import json
 import os
 from typing import Dict, Any, Optional, List
-
+from datetime import datetime, timedelta
 
 from src.service.interface.arb_service.arb_db_service import ARBDBService
 from src.utils.utils import load_json, to_json
@@ -17,7 +17,8 @@ class ARBDBServiceImpl(ARBDBService):
         self, 
         service_id: int,
         nosql_connector: str,
-        sql_connector: BaseRepository
+        sql_connector: BaseRepository,
+        expired_time: int
     ) -> None:
         """
         Initialize JsonDatabase with path to JSON file.
@@ -25,6 +26,7 @@ class ARBDBServiceImpl(ARBDBService):
         Args:
             json_file_path (str): Path to the JSON file to use as storage
         """
+        self.expired_time = expired_time
         self.nosql_path = nosql_connector
         self.wasa_aiml_connector = WasaAimlARBSPExecutor(service_id, sql_connector)
         self.__ensure_folder_exists()
@@ -140,4 +142,20 @@ class ARBDBServiceImpl(ARBDBService):
         try:
             return self.wasa_aiml_connector.insert_entity_extraction(ip_EntityInfo, running_time)
         except Exception as e:
-            raise ValueError(e)
+            raise ValueError(e)   
+        
+    def clean_conversation(self, expired_time: int = None) -> bool:
+        if expired_time is not None:
+            self.expired_time = expired_time
+            
+        data = load_json(path=self.nosql_path)
+        current_datetime = datetime.now()
+
+        for user_id, conversation in data.items():
+            duration = (current_datetime - datetime.strptime(conversation[-1]['current_time'], '%Y-%m-%d %H:%M:%S')).total_seconds() / 3600
+            if duration >= self.expired_time:
+                data.pop(user_id)
+            
+        to_json(data=data, path=self.nosql_path)
+        return True
+

@@ -2,7 +2,7 @@ import json
 from typing import Dict, Any, List
 
 from src.service.interface.arb_slave_agent.report_calling_agent import ReportCallingAgent
-from src.utils.constants import ReportCallingAgentConfig
+from src.service.implement.arb_supporter_impl.prompt_impl import ReportCallingAgentConfig
 from src.service.interface.arb_supporter.llm import LLM
 
 class ReportCallingAgentImpl(ReportCallingAgent):
@@ -13,6 +13,7 @@ class ReportCallingAgentImpl(ReportCallingAgent):
         name: str,
         task_description: str,
         report_config: Dict[str, Any],
+        agent_config: ReportCallingAgentConfig,
         tools: List[Any]
     ) -> None:
         """
@@ -32,12 +33,10 @@ class ReportCallingAgentImpl(ReportCallingAgent):
         self.model = model
         self.name = name
         self.task_description = task_description
-        self.agent_config = ReportCallingAgentConfig()
+        self.agent_config = agent_config()
         self.format_schema = self.agent_config.format_schema
         self.system_prompt = self.agent_config.system_prompt
         self.user_prompt = self.agent_config.user_prompt
-        self.instruction = self.agent_config.instruction
-        self.few_shot = self.agent_config.few_shot
         self.report_config = report_config
         self.tools = tools
 
@@ -49,10 +48,10 @@ class ReportCallingAgentImpl(ReportCallingAgent):
     def __get_abbreviation(self) -> str:
         
         abbreviated_functions = []
-        for func_info in self.report_config:
-            abbreviation = func_info['abbreviation']
-            function_name = func_info['name']
-            format_schema = f"- {abbreviation}: {function_name}"
+
+        for function_name, value in self.report_config.items():
+            abbreviation = ','.join(value['function']['abbreviation'])
+            format_schema = f"- {function_name}: {abbreviation}"
             abbreviated_functions.append(format_schema)
         
         abbreviated_functions_to_string = "\n".join(abbreviated_functions)
@@ -61,9 +60,11 @@ class ReportCallingAgentImpl(ReportCallingAgent):
     
     def __get_function_description(self) -> str:
         function_descriptions = []
-        for func_info in self.report_config:
-            function_description = func_info['description']
-            function_descriptions.append(function_description)
+        for function_name, value in self.report_config.items():
+            function_description = value['function']['description']
+            format_schema = f"- {function_name}: {function_description}"
+            function_descriptions.append(format_schema)
+            
         function_descriptions_to_string = "\n".join(function_descriptions)
         return function_descriptions_to_string
 
@@ -73,13 +74,10 @@ class ReportCallingAgentImpl(ReportCallingAgent):
         abbreviation = self.__get_abbreviation()
         function_description = self.__get_function_description()
     
-        user_prompt = self.user_prompt.format(
-            query=message, 
-            instruction=self.instruction.format(
-                abbreviation=abbreviation,
-                function_description=function_description
-            ), 
-            few_shot=self.few_shot
+        user_prompt = self.agent_config.format_prompt(
+            message=message,
+            abbreviation=abbreviation,
+            function_description=function_description
         )
 
         messages = [

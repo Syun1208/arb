@@ -21,7 +21,7 @@ BEGIN
 			- 20251004@Leon.Pham: Created [Redmine ID: #220692]
             
 		Example:
-			CALL SPU_AIML.SPU_AIML_ARB_APIKeyManagement_Insert_EntityExtraction (201, '[{"Q":"I want to get Winlost Report day 10 for SportsBook", "E":"10/04/2025, SportsBook", "F":"/get_winlost_report"}]',1.52, @msg);    
+			CALL SPU_AIML.SPU_AIML_ARB_APIKeyManagement_Insert_EntityExtraction (201, '[{"Q":"I want to get Winlost Report day 10 for SportsBook", "E":"10/04/2025, SportsBook", "F":"/winlost_detail"}]',1.52, @msg);    
 	*/ 
 
     DECLARE EXIT HANDLER FOR SQLEXCEPTION 

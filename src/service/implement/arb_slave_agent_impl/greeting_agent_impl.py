@@ -2,7 +2,7 @@ from typing import Dict, Any, List
 
 from src.service.interface.arb_slave_agent.greeting_agent import GreetingAgent
 from src.service.interface.arb_supporter.llm import LLM
-from src.utils.constants import GreetingAgentConfig
+from src.service.implement.arb_supporter_impl.prompt_impl import GreetingAgentConfig
 
 class GreetingAgentImpl(GreetingAgent):
     
@@ -13,6 +13,7 @@ class GreetingAgentImpl(GreetingAgent):
         name: str,
         task_description: str,
         report_config: Dict[str, Any],
+        agent_config: GreetingAgentConfig,
         tools: List[Any]
     ) -> None:
         """
@@ -32,24 +33,17 @@ class GreetingAgentImpl(GreetingAgent):
         self.model = model
         self.name = name
         self.task_description = task_description
-        self.agent_config = GreetingAgentConfig()
-        self.format_schema = self.agent_config.format_schema
+        self.agent_config = agent_config()
         self.system_prompt = self.agent_config.system_prompt
-        self.user_prompt = self.agent_config.user_prompt
-        self.instruction = self.agent_config.instruction
-        self.few_shot = self.agent_config.few_shot
         self.report_config = report_config
         self.tools = tools
        
-    
+    def __repr__(self) -> str:
+        return f"{self.name}: {self.task_description}"
     
     def chat(self, message: str) -> str:
         
-        user_prompt = self.user_prompt.format(
-            message=message,
-            instruction=self.instruction,
-            few_shot=self.few_shot
-        )
+        user_prompt = self.agent_config.format_prompt(message=message)
 
         messages = [
             {"role": "system", "content": self.system_prompt},
