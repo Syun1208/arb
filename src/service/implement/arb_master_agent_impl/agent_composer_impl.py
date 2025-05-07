@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Optional, Tuple, List, Any
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
@@ -10,8 +10,10 @@ from src.service.interface.arb_slave_agent.ner_agent import NerAgent
 from src.service.interface.arb_slave_agent.report_calling_agent import ReportCallingAgent
 from src.service.interface.arb_slave_agent.greeting_agent import GreetingAgent
 from src.service.interface.arb_service.arb_db_service import ARBDBService
-from src.utils.utils import format_entities_for_prompt, format_date
-from src.utils.constants import FUNCTION_MAPPING_NAME
+from src.service.interface.arb_slave_agent.abbreviation_recognizer_agent import AbbreviationRecognizerAgent
+from src.service.interface.arb_slave_agent.removal_entity_detection_agent import RemovalEntityDetectionAgent
+from src.utils.utils import format_entities_for_prompt, format_date, weighted_voting
+from src.utils.constants import FUNCTION_MAPPING_NAME, ICONS
 
 class AgentComposerImpl(AgentComposer):
     """
@@ -23,9 +25,11 @@ class AgentComposerImpl(AgentComposer):
         self,
         greeting_agent: GreetingAgent,
         confirmation_recognizer_agent: RecognizerAgent,
+        removal_entity_detection_agent: RemovalEntityDetectionAgent,
         ner_agent: NerAgent,
         report_calling_agent: ReportCallingAgent,
         greeting_recognizer_agent: RecognizerAgent,
+        abbreviation_recognizer_agent: AbbreviationRecognizerAgent,
         database: ARBDBService,
         num_workers: int
     ) -> None:
@@ -35,24 +39,27 @@ class AgentComposerImpl(AgentComposer):
         Args:
             greeting_agent: GreetingAgent
             confirmation_recognizer_agent: RecognizerAgent
+            removal_entity_detection_agent: RemovalEntityDetectionAgent
             ner_agent: NerAgent
             report_calling_agent: ReportCallingAgent
             greeting_recognizer_agent: RecognizerAgent
+            abbreviation_recognizer_agent: AbbreviationRecognizerAgent
             database: ARBDBService
             num_workers: int
         """
         # Initialize the agents
         self.greeting_agent = greeting_agent
         self.confirmation_recognizer_agent = confirmation_recognizer_agent
+        self.removal_entity_detection_agent = removal_entity_detection_agent
         self.ner_agent = ner_agent
         self.database = database
         self.report_calling_agent = report_calling_agent
         self.greeting_recognizer_agent = greeting_recognizer_agent
+        self.abbreviation_recognizer_agent = abbreviation_recognizer_agent
         self.num_workers = num_workers
-
         
     @staticmethod
-    def __update_entities(function_called: str, previous_params: Dict[str, str], current_params: Dict[str, str]) -> Dict[str, str]:
+    def __update_entities(previous_params: Dict[str, str], current_params: Dict[str, str]) -> Dict[str, str]:
         """
         Update the params from the from_params to the to_params
         Args:
@@ -63,28 +70,29 @@ class AgentComposerImpl(AgentComposer):
             The updated params
         """
         if not previous_params:
-            return current_params
+            return current_params 
         
-        if 'date_range' in current_params:
-            del current_params['date_range']
-            
         updated_params = current_params.copy()
-        
-        if function_called in ["winlost_detail", "turnover"]:
-            
-            if current_params['from_date'] != 'N/A':
-                updated_params['from_date'] = current_params['from_date']
-            
-            if current_params['to_date'] != 'N/A':
-                updated_params['to_date'] = current_params['to_date']
         
         for key, value in updated_params.items():
             if value == "N/A" or value == 'All' or value == 10:
                 updated_params[key] = previous_params[key]
                 
         return updated_params
-        
-        
+      
+    def __delete_entities(self, function_called: str, entities: Dict[str, str], removal_entities: List[str]) -> Dict[str, str]:
+        """
+        Delete the entities from the entities
+        """
+        default_entities = self.ner_agent._get_default_value(function_called)
+        if 'date_range' in default_entities:
+            del default_entities['date_range']
+        print('🤖 default_entities: ', default_entities)
+        for removal_entity in removal_entities:
+            default_entity = default_entities[removal_entity]
+            entities[removal_entity] = default_entity
+        return entities
+    
     @staticmethod
     def __get_status_code(params: Optional[Dict[str, str]], endpoint: Optional[str]) -> AlphaStatusCode:
         """
@@ -109,52 +117,27 @@ class AgentComposerImpl(AgentComposer):
         
         return AlphaStatusCode(status_code=209, message="Confirmation is accepted")
 
-    @staticmethod
-    def  __get_winlost_turnover_params_prompt(entities: Dict[str, str]) -> str:
-        """
-        Get the winlost turnover params prompt
-        """
-        return f"""
-📅 Date Range: {entities['from_date']} - {entities['to_date']}
-🏢 Product: {entities['product']} 
-📋 Product Detail: {entities['product_detail']}
-🎮 Level: {entities['level']}
-👤 Username: {entities['user']}"""
-
-    @staticmethod
-    def __get_outstanding_top_outstanding_params_prompt(entities: Dict[str, str]) -> str:
-        """
-        Get the outstanding top outstanding params prompt
-        """
-        return f"""
-🏢 Product: {entities['product']} 
-👤 Username: {entities['user']}"""
-
-    @staticmethod
-    def __get_top_outstanding_params_prompt(entities: Dict[str, str]) -> str:
-        """
-        Get the top outstanding params prompt
-        """
-        return f"""
-🏢 Product: {entities['product']}
-🔝 Top: {entities['top']}"""
-
-
-    def __get_base_params(self, function_called: str, entities: Dict[str, str]) -> str:
+    def __get_params_prompt(self, entities: Dict[str, str]) -> str:
         """
         Get the base params
         """
+        params_prompts = []
 
-        base_params = {
-            "/winlost_detail": self.__get_winlost_turnover_params_prompt,
-            "/turnover": self.__get_winlost_turnover_params_prompt,
-            "/outstanding": self.__get_outstanding_top_outstanding_params_prompt,
-            "/topoutstanding": self.__get_top_outstanding_params_prompt
-        }
-        
-        return base_params[function_called](entities)
-        
- 
+        for key, value in entities.items():
+            
+            if key == "from_date" or key == "to_date":
+                key_prompts = "Date Range"
+                value = f"{entities['from_date']} - {entities['to_date']}"
+            else:
+                key_items = key.split("_")
+                if len(key_items) > 1:
+                    key_prompts = " ".join(key_items).capitalize()
+                else: 
+                    key_prompts = key.capitalize()
+            params_prompts.append(f"{ICONS[key]} {key_prompts}: {value}")
+            
+        params_prompts = list(set(params_prompts))
+        return "\n".join(params_prompts)
 
     async def compose(self, user_id: str, message: str) -> Tuple[AlphaMetadata, AlphaStatusCode]:
         """
@@ -186,6 +169,18 @@ class AgentComposerImpl(AgentComposer):
         if not is_normal_conversation:
 
             # Get entities following to the function called
+            # with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+            #     function_calling_future = executor.submit(self.report_calling_agent.call_report, message)
+            #     function_abbreviation_future = executor.submit(self.abbreviation_recognizer_agent.recognize_report, message)
+                
+            #     function_calling = function_calling_future.result()
+            #     function_abbreviation = function_abbreviation_future.result()
+            
+            # # Voting
+            # function_called = weighted_voting(
+            #     [function_calling, function_abbreviation],
+            #     [WEIGHT_VOTING_REPORT['report_calling_agent'], WEIGHT_VOTING_REPORT['abbreviation_recognizer_agent']]
+            # )
             function_called = self.report_calling_agent.call_report(message)
             
             # Convert endpoint to None if it is N/A
@@ -216,6 +211,17 @@ class AgentComposerImpl(AgentComposer):
             print('🤖 function_called updated: ', function_called)
             function_name = FUNCTION_MAPPING_NAME[function_called]
     
+            if function_called is None:
+                response = "❌ Could not find the Function/Report. Please specify the function to proceed with generating the report."
+                alpha_metadata = AlphaMetadata(
+                    user_id=user_id,
+                    is_new_session=False,
+                    is_action=False,
+                    endpoint=None,
+                    params=None,
+                    response=response
+                )
+                return alpha_metadata, alpha_status_code
             
             # Define the normal conversation
             if is_action:
@@ -233,19 +239,43 @@ class AgentComposerImpl(AgentComposer):
                 )
             
             # Extract and update the entities
-            entities = self.ner_agent.extract_entities(message, function_called)
-            
-            if not is_new_session:
-                entities = self.__update_entities(function_called, previous_entities, entities)
+            # with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+            #     ner_future = executor.submit(self.ner_agent.extract_entities, message, function_called)
+            #     abbreviation_future = executor.submit(self.abbreviation_recognizer_agent.recognize_entity, message, function_called)
                 
-            # Generate response based on tasks, entities and confirmation
+            #     entities_ner = ner_future.result()
+            #     entities_abbreviation = abbreviation_future.result()
+            
+            # # Voting
+            # entities = weighted_voting(
+            #     [entities_ner, entities_abbreviation],
+            #     [WEIGHT_VOTING_ENTITY['ner_agent'], WEIGHT_VOTING_ENTITY['abbreviation_recognizer_agent']]
+            # )
+                
+            entities = self.ner_agent.extract_entities(message, function_called)
+            if "date_range" in entities:
+                del entities['date_range']
+                
+            removal_entities = self.removal_entity_detection_agent.detect_removal_entities(message, entities)
+            
+            # Update the entities
+            if not is_new_session:
+                entities = self.__update_entities(previous_entities, entities)
+                
+            # Delete the entities
+            if len(removal_entities) != 0:
+                entities = self.__delete_entities(function_called, entities, removal_entities)
+            
+            print('🤖 removal_entities: ', removal_entities)
+            print('🤖 entities: ', entities)
+                
             # Check if date range is specified
             message_non_date = ""
-            if function_called in ["/winlost_detail", "/turnover"] and  entities['from_date'] == 'N/A':
+            if function_called in ["/winlost_detail", "/turnover"] and entities['from_date'] == 'N/A':
                 message_non_date = "❌ Please specify the date range for your request to proceed with generating the report."
 
             # Build base response with parameters
-            base_params = self.__get_base_params(function_called, entities)
+            base_params = self.__get_params_prompt(entities)
 
             # Handle action case
             if is_action:
@@ -276,16 +306,9 @@ class AgentComposerImpl(AgentComposer):
 {message_non_date}"""
 
             # Add header based on function status
-            if function_called is None:
-                header = "🎲 Here is the summary of parameters:"
-                function_warning = """
-⚠️ NOTE THAT: You should not confirm the information if you have not specified the function to proceed with generating the report.
-❌ Could not find the Function/Report. Please specify the function to proceed with generating the report."""
-                response = f"{header}\n{response}\n{function_warning}"
-            
-            else:
-                header = f"🎲 Here is the summary of parameters for {function_name}:"
-                response = f"{header}\n{response}"
+
+            header = f"🎲 Here is the summary of parameters for {function_name}:"
+            response = f"{header}\n{response}"
                 
             print(f'🕵️ Request: {message}\n')
             print(f'🤖 Response: {response}\n') 

@@ -1,6 +1,6 @@
 nosql_config:
   conversation_path: "./data/nosql/historical_conversation.json"
-  expired_time: 1 # hour
+  expired_time: 0.5 # hour
 
 sql_config:
   aiml_mysql:
@@ -11,3 +11,14 @@ sql_config:
     host : '10.18.200.72'
     port : '3306'
     dbms_name : 'MySQL'
+
+vector_db_config:
+  top_k: 10
+  num_workers: 2
+  path_save:
+    report: 
+      semantic: "./data/vector_db/report_semantic.index"
+      keyword: "./data/vector_db/report_keyword.pkl"
+    entity: 
+      semantic: "./data/vector_db/entity_semantic.index"
+      keyword: "./data/vector_db/entity_keyword.pkl"

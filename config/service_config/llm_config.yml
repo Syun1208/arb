@@ -1,2 +1,2 @@
 llm_config:
-  api: "http://10.5.10.110:8090"
+  api: "https://ollama.selab.edu.vn"

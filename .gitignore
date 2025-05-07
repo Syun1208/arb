@@ -9,3 +9,4 @@ clean.py
 **/*.csv
 data/nosql/historical_conversation.json
 **/*arb/
+**/*vector_db

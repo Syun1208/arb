@@ -1,7 +1,7 @@
 from dependency_injector import containers, providers
 from thespian.actors import ActorSystem
 
-from src.service.implement.arb_supporter_impl.prompt_impl import NerAgentConfig, GreetingAgentConfig, GreetingRecognizerAgentConfig, ReportCallingAgentConfig, ConfirmationRecognizerAgentConfig
+from src.service.implement.arb_supporter_impl.prompt_impl import NerAgentConfig, GreetingAgentConfig, GreetingRecognizerAgentConfig, ReportCallingAgentConfig, ConfirmationRecognizerAgentConfig, RemovalEntityDetectionAgentConfig
 
 from src.service.interface.arb_slave_agent.greeting_agent import GreetingAgent
 from src.service.implement.arb_slave_agent_impl.greeting_agent_impl import GreetingAgentImpl
@@ -21,6 +21,15 @@ from src.service.implement.arb_slave_agent_impl.ner_agent_impl import NerAgentIm
 
 from src.service.interface.arb_service.arb_db_service import ARBDBService
 from src.service.implement.arb_service_impl.arb_db_service_impl import ARBDBServiceImpl
+
+from src.service.interface.arb_slave_agent.abbreviation_recognizer_agent import AbbreviationRecognizerAgent
+from src.service.implement.arb_slave_agent_impl.abbreviation_recognizer_agent_impl import AbbreviationRecognizerAgentImpl
+
+from src.service.interface.arb_slave_agent.removal_entity_detection_agent import RemovalEntityDetectionAgent
+from src.service.implement.arb_slave_agent_impl.removal_entity_detection_agent_impl import RemovalEntityDetectionAgentImpl
+
+from src.service.interface.arb_service.arb_vector_db_service import ARBVectorDBService
+from src.service.implement.arb_service_impl.arb_vector_db_service_impl import ARBVectorDBServiceImpl
 
 from src.service.interface.arb_master_agent.agent_composer import AgentComposer
 from src.service.implement.arb_master_agent_impl.agent_composer_impl import AgentComposerImpl
@@ -112,6 +121,19 @@ class ApplicationContainer(containers.DeclarativeContainer):
         )
     )
     
+    removal_entity_detection_agent = providers.AbstractSingleton(RemovalEntityDetectionAgent)
+    removal_entity_detection_agent.override(
+        providers.Singleton(
+            RemovalEntityDetectionAgentImpl,
+            llm=llm,
+            model=service_config.removal_entity_detection_agent_config.llm_model,
+            name=service_config.removal_entity_detection_agent_config.name,
+            task_description=service_config.removal_entity_detection_agent_config.task_description,
+            report_config=report_config,
+            agent_config=RemovalEntityDetectionAgentConfig,
+            tools=None
+        )
+    )
     greeting_recognizer_agent = providers.AbstractSingleton(RecognizerAgent)
     greeting_recognizer_agent.override(
         providers.Singleton(
@@ -154,15 +176,46 @@ class ApplicationContainer(containers.DeclarativeContainer):
         )
     )
     
+    report_vector_db = providers.AbstractSingleton(ARBVectorDBService)
+    report_vector_db.override(
+        providers.Singleton(
+            ARBVectorDBServiceImpl,
+            path_save=service_config.vector_db_config.path_save.report,
+            num_workers=service_config.vector_db_config.num_workers
+        )
+    )
+    
+    entity_vector_db = providers.AbstractSingleton(ARBVectorDBService)
+    entity_vector_db.override(
+        providers.Singleton(
+            ARBVectorDBServiceImpl,
+            path_save=service_config.vector_db_config.path_save.entity,
+            num_workers=service_config.vector_db_config.num_workers
+        )
+    )
+    
+    abbreviation_recognizer_agent = providers.AbstractSingleton(AbbreviationRecognizerAgent)
+    abbreviation_recognizer_agent.override(
+        providers.Singleton(
+            AbbreviationRecognizerAgentImpl,
+            report_vector_db=report_vector_db,
+            entity_vector_db=entity_vector_db,
+            top_k=service_config.abbreviation_recognizer_agent_config.top_k,
+            report_config=report_config,
+            num_workers=service_config.abbreviation_recognizer_agent_config.num_workers
+        )
+    )
     agent_composer = providers.AbstractSingleton(AgentComposer)
     agent_composer.override(
         providers.Singleton(
             AgentComposerImpl,
             greeting_agent=greeting_agent,
             confirmation_recognizer_agent=confirmation_recognizer_agent,
+            removal_entity_detection_agent=removal_entity_detection_agent,
             ner_agent=ner_agent,
             report_calling_agent=report_calling_agent,
             greeting_recognizer_agent=greeting_recognizer_agent,
+            abbreviation_recognizer_agent=abbreviation_recognizer_agent,
             database=arb_db_service,
             num_workers=service_config.default.spec.num_workers
         )

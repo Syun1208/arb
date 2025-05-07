@@ -1,11 +1,11 @@
 import json
 from typing import List, Dict, Any
-
+import re
 
 from src.service.interface.arb_supporter.llm import LLM
 from src.service.interface.arb_slave_agent.ner_agent import NerAgent
 from src.service.implement.arb_supporter_impl.prompt_impl import NerAgentConfig
-from src.utils.utils import flatten_list_2d
+from src.utils.utils import flatten_list_2d, get_last_week_dates, get_last_year_dates, get_last_month_dates, get_this_year_dates
 
 class NerAgentImpl(NerAgent):
     """
@@ -56,23 +56,27 @@ class NerAgentImpl(NerAgent):
         parameter_properties = func_info['function']['parameters']['properties']
         for key, value in parameter_properties.items():
                 if value['enum'] is not None:
-                    abbreviation = flatten_list_2d(value['abbreviation'].values())
-                    abbreviation_str = ", ".join(abbreviation)
+                    # abbreviation = flatten_list_2d(value['abbreviation'].values())
+                    # abbreviation_str = ", ".join(abbreviation)
                     value2str = ", ".join(value['enum'])
-                    parameter_properties_to_string = f"### {key.upper()}: {value2str}, {abbreviation_str}"
+                    parameter_properties_to_string = f"### {key.upper()}: {value2str}"
                     parameter_info.append(parameter_properties_to_string)
         
         parameter_info_to_string = "\n".join(parameter_info)
         return parameter_info_to_string
 
 
-    def __get_default_value(self, function_called: str) -> str:
+    def _get_default_value(self, function_called: str) -> str:
         func_info = self.report_config[function_called]
         parameter_properties = func_info['function']['parameters']['properties']
         
         default_value = {}
         for key, value in parameter_properties.items():
             default_value[key] = value['default']
+            
+        if function_called in ["/winlost_detail", "/turnover"]:
+            default_value['date_range'] = "N/A"
+            
         return default_value
     
     
@@ -120,7 +124,7 @@ class NerAgentImpl(NerAgent):
             parameter_properties=parameter_properties,
             # abbreviation=abbreviation
         )
-        print(user_prompt)
+
         messages = [
             {"role": "system", "content": agent.system_prompt},
             {"role": "user", "content": user_prompt}
@@ -134,6 +138,8 @@ class NerAgentImpl(NerAgent):
         )
         
         if not json.loads(response):
-            return self.__get_default_value(function_called)
-            
-        return json.loads(response)
+            return self._get_default_value(function_called)
+        
+        result = json.loads(response)
+    
+        return result

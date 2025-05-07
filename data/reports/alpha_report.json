@@ -4,14 +4,16 @@
         "function": {
             "friendly_name": "Get Win/Lost Detail Report",
             "abbreviation": [
+                "WR",
+                "WL Report",
                 "W/L Detail Report",
                 "W/L Detail",
-                "W/L",
-                "w/l",
-                "w/l",
-                "W/L Report", 
-                "W/L Report Detail",
-                "W/L Report Detail Report"
+                "WR",
+                "WLR",
+                "W-L Report",
+                "WinLossRpt",
+                "W/L Rpt",
+                "W/L Report"
             ],
             "description": "Get Win/Loss reports. Supports exporting reports (CSV/PDF), comparing trends across time periods, highlighting biggest winners/losers, and detecting unusual betting patterns. The Win Loss Report helps you easily track performance by showing either your own win/loss or your downline's. Use it to review results and settle balances with your downline or upline efficiently.",
             "parameters": {
@@ -214,7 +216,7 @@
                             "ASKMESLOT Promotion Prize"
                         ],
                         "abbreviation": {
-                            "SABA Basketball": ["SBB"],
+                            "SABA Basketball": ["SBB", "SABA B"],
                             "SABA Basketball PinGoal": ["SBBPG"],
                             "SABA E-Sports PinGoal": ["SBEPG"],
                             "SABA Other Sports": ["SAOS"],

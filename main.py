@@ -2,6 +2,7 @@ import os
 import sys
 import uvicorn
 import warnings
+
 warnings.filterwarnings('ignore')
 
 import logging
@@ -11,14 +12,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 
-from dependency_injector.wiring import Provide, inject
+from dependency_injector.wiring import inject
 
 from src.utils.debugger import pretty_errors
 from src.module.application_container import ApplicationContainer
 from src.controller.arb_service_controller import arb_router, health_check_router
 from src.controller.arb_auth_controller import auth_router
 from src.controller.arb_nosql_controller import nosql_router
-from src.controller import arb_service_controller, arb_auth_controller, arb_nosql_controller
+from src.controller.arb_vector_db_controller import vector_db_router
+from src.controller import arb_service_controller, arb_auth_controller, arb_nosql_controller, arb_vector_db_controller
 from src.utils.utils import load_yaml
 
 
@@ -51,6 +53,7 @@ def create_app(env: str) -> FastAPI:
         , arb_service_controller
         , arb_auth_controller
         , arb_nosql_controller
+        , arb_vector_db_controller
     ]
 
     application_container.report_config.from_json("data/reports/alpha_report.json")
@@ -66,7 +69,8 @@ def create_app(env: str) -> FastAPI:
     app.include_router(arb_router, prefix="/api/v1", tags=['Report Chatbot'])
     app.include_router(auth_router, prefix="/api/v1", tags=['API Key Authentication & Authorization'])
     app.include_router(nosql_router, prefix="/api/v1", tags=['NoSQL Database'])
-    
+    app.include_router(vector_db_router, prefix="/api/v1", tags=['Vector DB Controller'])
+
     logging.info("Wire completed")
     logging.basicConfig(level=logging.INFO)
 

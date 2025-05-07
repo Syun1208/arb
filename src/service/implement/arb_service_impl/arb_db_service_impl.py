@@ -152,6 +152,9 @@ class ARBDBServiceImpl(ARBDBService):
         current_datetime = datetime.now()
 
         for user_id, conversation in data.items():
+            if len(conversation) == 0:
+                continue
+            
             duration = (current_datetime - datetime.strptime(conversation[-1]['current_time'], '%Y-%m-%d %H:%M:%S')).total_seconds() / 3600
             if duration >= self.expired_time:
                 data.pop(user_id)

@@ -26,3 +26,13 @@ ner_agent_config:
   name: "NER Agent"
   task_description: "NER Agent is a service that recognizes the user's NER."
   llm_model: "qwen2.5:14b"
+
+removal_entity_detection_agent_config:
+  name: "Removal Entity Detection Agent"
+  task_description: "Removal Entity Detection Agent is a service that detects the user's removal entity."
+  llm_model: "qwen2.5:14b"
+
+
+abbreviation_recognizer_agent_config:
+  top_k: 10
+  num_workers: 2

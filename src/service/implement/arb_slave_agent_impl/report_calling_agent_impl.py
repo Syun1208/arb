@@ -4,6 +4,7 @@ from typing import Dict, Any, List
 from src.service.interface.arb_slave_agent.report_calling_agent import ReportCallingAgent
 from src.service.implement.arb_supporter_impl.prompt_impl import ReportCallingAgentConfig
 from src.service.interface.arb_supporter.llm import LLM
+from concurrent.futures import ThreadPoolExecutor
 
 class ReportCallingAgentImpl(ReportCallingAgent):
     def __init__(
@@ -50,7 +51,7 @@ class ReportCallingAgentImpl(ReportCallingAgent):
         abbreviated_functions = []
 
         for function_name, value in self.report_config.items():
-            abbreviation = ','.join(value['function']['abbreviation'])
+            abbreviation = ', '.join(value['function']['abbreviation'])
             format_schema = f"- {function_name}: {abbreviation}"
             abbreviated_functions.append(format_schema)
         
@@ -71,9 +72,13 @@ class ReportCallingAgentImpl(ReportCallingAgent):
 
     def call_report(self, message: str) -> Dict[str, Any]:
         
-        abbreviation = self.__get_abbreviation()
-        function_description = self.__get_function_description()
-    
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            abbreviation_future = executor.submit(self.__get_abbreviation)
+            function_description_future = executor.submit(self.__get_function_description)
+            
+            abbreviation = abbreviation_future.result()
+            function_description = function_description_future.result()
+            
         user_prompt = self.agent_config.format_prompt(
             message=message,
             abbreviation=abbreviation,

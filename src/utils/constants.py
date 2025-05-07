@@ -62,3 +62,28 @@ FUNCTION_MAPPING_NAME = {
 DEPARTMENT_MAPPING_NAME = [
     'Alpha'
 ] 
+
+WEIGHT_VOTING_SEARCH = {
+    "semantic_search": 0.9,
+    "keyword_search": 0.1
+}
+
+WEIGHT_VOTING_REPORT = {
+    "report_calling_agent": 0.5,
+    "abbreviation_recognizer_agent": 0.5
+}
+
+WEIGHT_VOTING_ENTITY = {
+    "abbreviation_recognizer_agent": 0.5,
+    "ner_agent": 0.5
+}
+
+ICONS = {
+    "from_date": "📅",
+    "to_date": "📅",
+    "product": "🏢",
+    "product_detail": "📋",
+    "level": "🎮",
+    "user": "👤",
+    "top": "🔝"
+}

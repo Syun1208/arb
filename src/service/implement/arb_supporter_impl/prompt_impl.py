@@ -1,6 +1,6 @@
 import dataclasses
-from typing import Dict, Any
-from src.utils.utils import get_current_date, get_current_year, get_current_month, load_json
+from typing import Dict, Any, List
+from src.utils.utils import get_current_date, get_current_year, get_current_month, get_last_week_dates
 from src.utils.constants import AGREE_PHRASES
 
 
@@ -90,6 +90,258 @@ class ConfirmationRecognizerAgentConfig:
         return user_prompt
 
 @dataclasses.dataclass
+class RemovalEntityDetectionAgentConfig:
+    instruction: str = """
+        # General conversation guidelines:
+        - Please detect the pattern of user's query if it does not contain any removal request such "no user please", "delete product detail please" so on. Otherwise, default as a empty list {{"params2delete": []}}.
+        - Please help me identify which parameters you want to remove from your query. This is all of the parameters: {entities_as_string}
+        - You must follow the examples below to detect the pattern of user's query and make decision.
+    """
+    few_shot: str = """
+        # ***Example Scenarios:***
+        
+        # Examples of removing parameters
+        - ***User***: "No username please"
+        - ***Assistant***: {{"params2delete": ["user"]}}
+        
+        - ***User***: "I want to winlost report, no username and level please"
+        - ***Assistant***: {{"params2delete": ["user", "level"]}}
+
+        - ***User***: "Remove the date range"
+        - ***Assistant***: {{"params2delete": ["from_date", "to_date"]}}
+
+        - ***User***: "Don't include product"
+        - ***Assistant***: {{"params2delete": ["product"]}}
+        
+        - ***User***: "I want to delete top"
+        - ***Assistant***: {{"params2delete": ["top"]}}
+        
+        - ***User***: "Please roll back the date range to default"
+        - ***Assistant***: {{"params2delete": ["from_date", "to_date"]}}
+        
+        - ***User***: "Reset the date range and product detail to default"
+        - ***Assistant***: {{"params2delete": ["from_date", "to_date", "product_detail"]}}
+
+        - ***User***: "Remove all filters except the date range"
+        - ***Assistant***: {{"params2delete": ["product", "product_detail", "level", "user", "top"]}}
+        
+        # Examples of queries that don't remove parameters
+        - ***User***: "I want to get winlost report for Sportsbook only"
+        - ***Assistant***: {{"params2delete": []}}
+        
+        - ***User***: "Show me the report for Number Game"
+        - ***Assistant***: {{"params2delete": []}}
+        
+        - ***User***: "Get the data for user124"
+        - ***Assistant***: {{"params2delete": []}}
+        
+        - ***User***: "Change the date to last week"
+        - ***Assistant***: {{"params2delete": []}}
+        
+        - ***User***: "I want to get current outstanding for Sportsbook and user master1 only"
+        - ***Assistant***: {{"params2delete": []}}
+
+        # Examples with multiple parameters
+        - ***User***: "Remove user and product filters, keep everything else"
+        - ***Assistant***: {{"params2delete": ["user", "product"]}}
+        
+        - ***User***: "Reset all parameters to default except user"
+        - ***Assistant***: {{"params2delete": ["product", "product_detail", "level", "from_date", "to_date", "top"]}}
+        
+        - ***User***: "Clear the date range and level filters please"
+        - ***Assistant***: {{"params2delete": ["from_date", "to_date", "level"]}}
+    """
+
+    system_prompt: str = """
+        You are a helpful assistant that identifies which parameters you want to remove from user's query.
+    """
+    user_prompt: str = """
+        # User's message
+        {message}
+
+        {instruction}
+
+        {few_shot}
+    """
+    format_schema =  {
+        "type": "object",
+        "properties": {
+            "params2delete": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": None
+                }
+            }
+        },
+        "required": ["params2delete"]
+    }
+    
+    def update_format_schema(self, entities: List[str]) -> None:
+        self.format_schema['properties']['params2delete']['items']['enum'] = entities
+    
+    def format_prompt(self, message: str, **kwargs) -> str:
+        entities_as_string = ', '.join(list(kwargs['entities'].keys()))
+
+        user_prompt = self.user_prompt.format(
+            message=message,
+            instruction=self.instruction.format(
+                entities_as_string=entities_as_string
+            ),
+            few_shot=self.few_shot
+        )
+        return user_prompt
+    
+@dataclasses.dataclass
+class RemovalEntityDetectionAgentConfigV2:
+    instruction: str = """
+        # General conversation guidelines:
+        - Please detect the pattern of user's query if it does not contain any removal request such "no user please", "delete product detail please" so on. Otherwise, default as a empty list {{"params2delete": []}}.
+        - Please help me identify which parameters you want to remove from your query. This is all of the parameters: {entities_as_string}, "N/A"
+        - Return your answer in JSON format with a single key "params2delete"
+        - Based on the current entities: {entities_as_json}, detect which entity is required to delete from user's query.
+    """
+    few_shot: str = """
+        # ***Example Scenarios:***
+        
+        - ***User***: "No username please"
+        - ***Current entities***: {{
+            "from_date": "12/08/2001",
+            "to_date": "15/09/2001",
+            "product": "Sportsbook",
+            "product_detail": "All",
+            "level": "All",
+            "user": "master12"
+        }}
+        - ***Assistant***: {{"params2delete": ["user"]}}
+        
+        - ***User***: "I want to winlost report, no username and level please"
+        - ***Current entities***: {{
+            "from_date": "10/05/2015",
+            "to_date": "15/09/2015",
+            "product": "All",
+            "product_detail": "All",
+            "level": "Master Agent",
+            "user": "master12"
+        }}
+        - ***Assistant***: {{"params2delete": ["user", "level"]}}
+
+        - ***User***: "Remove the date range"
+        - ***Current entities***: {{
+            "from_date": "12/08/2001",
+            "to_date": "15/09/2001",
+            "product": "All",
+            "product_detail": "All",
+            "level": "All",
+            "user": "N/A"
+        }}
+        - ***Assistant***: {{"params2delete": ["from_date", "to_date"]}}
+
+        - ***User***: "Don't include product"
+        - ***Current entities***: {{
+            "from_date": "12/08/2001",
+            "to_date": "15/09/2001",
+            "product": "Number Game",
+            "product_detail": "All",
+            "level": "All",
+            "user": "N/A"
+        }}
+        - ***Assistant***: {{"params2delete": ["product"]}}
+        
+        - ***User***: "I want to delete top"
+        - ***Current entities***: {{
+            "product": "RNG Slot",
+            "top": 200
+        }}
+        - ***Assistant***: {{"params2delete": ["top"]}}
+        
+        - ***User***: "Please roll back the date range to default"
+        - ***Current entities***: {{
+            "from_date": "N/A",
+            "to_date": "N/A",
+            "product": "Sportsbook",
+            "product_detail": "All",
+            "level": "All",
+            "user": "N/A"
+        }}
+        - ***Assistant***: {{"params2delete": ["from_date", "to_date"]}}
+        
+        - ***User***: "I want to get winlost report for Sportsbook only"
+        - ***Current entities***: {{
+            "from_date": "N/A",
+            "to_date": "N/A",
+            "product": "Sportsbook",
+            "product_detail": "All",
+            "level": "All",
+            "user": "N/A"
+        }}
+        - ***Assistant***: {{"params2delete": []}}
+        
+        - ***User***: "Please roll back the product to default"
+        - ***Current entities***: {{
+            "from_date": "N/A",
+            "to_date": "N/A",
+            "product": "Sportsbook",
+            "product_detail": "All",
+            "level": "All",
+            "user": "N/A"
+        }}
+        - ***Assistant***: {{"params2delete": ["product"]}}
+             
+        - ***User***: "now i want winlost report in Number Game only"
+        - ***Current entities***: {{
+            "from_date": "N/A",
+            "to_date": "N/A",
+            "product": "Number Game",
+            "product_detail": "All",
+            "level": "All",
+            "user": "N/A"
+        }}
+        - ***Assistant***: {{"params2delete": []}}
+    """
+
+    system_prompt: str = """
+        You are a helpful assistant that identifies which parameters you want to remove from user's query.
+    """
+    user_prompt: str = """
+        # User's message
+        {message}
+
+        {instruction}
+
+        {few_shot}
+    """
+    format_schema =  {
+        "type": "object",
+        "properties": {
+            "params2delete": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": None
+                }
+            }
+        },
+        "required": ["params2delete"]
+    }
+    
+    def update_format_schema(self, entities: List[str]) -> None:
+        self.format_schema['properties']['params2delete']['items']['enum'] = entities
+    
+    def format_prompt(self, message: str, **kwargs) -> str:
+        entities_as_string = ', '.join(list(kwargs['entities'].keys()))
+        entities_as_json = kwargs['entities']
+        user_prompt = self.user_prompt.format(
+            message=message,
+            instruction=self.instruction.format(
+                entities_as_string=entities_as_string,
+                entities_as_json=entities_as_json
+            ),
+            few_shot=self.few_shot
+        )
+        return user_prompt
+
+@dataclasses.dataclass
 class GreetingAgentConfig:
     instruction: str = """
         # General conversation guidelines:
@@ -160,6 +412,12 @@ class GreetingRecognizerAgentConfig:
         - ***User***: "Hello bot how are you today ?"
         - ***Assistant***: {{"is_normal_conversation": 1}}
         
+        - ***User***: "No username please"
+        - ***Assistant***: {{"is_normal_conversation": 0}}
+        
+        - ***User***: "I want to get winlost report day 15 for sportsbook and user leon2346 only"
+        - ***Assistant***: {{"is_normal_conversation": 0}}
+        
         - ***User***: "See you later. Bye."
         - ***Assistant***: {{"is_normal_conversation": 1}}
 
@@ -219,7 +477,7 @@ class ReportCallingAgentConfig:
             - If the user request is not related to the function, return "N/A"
             - Available functions:
                 {function_description}
-                
+            - Try to recognize the funtion abbreviation from user's query
             - Function Abbreviations:
                 {abbreviation}
 
@@ -232,6 +490,11 @@ class ReportCallingAgentConfig:
         #📝Example requests and responses:
         
         Input: "I need to see the win/loss report from last week"
+        Output: {{
+            "function_called": "/winlost_detail"
+        }}
+        
+        Input: "w/l please bro"
         Output: {{
             "function_called": "/winlost_detail"
         }}
@@ -361,7 +624,7 @@ class WinlostTurnoverNERAgentConfig:
         3. If relative dates are mentioned:
            - "today" -> Use {current_date} for both
            - "yesterday" -> Use yesterday's date for both from current date {current_date}
-           - "last week" -> from_date is 7 days ago, to_date is today from current date {current_date}
+           - "last week" -> From {last_monday} to {last_sunday}
            - "last month" -> from_date is 1st of previous month, to_date is last day of previous month from current date {current_date}
            - "last year" -> from_date is Jan 1st of previous year, to_date is Dec 31st of previous year from current date {current_date}
            - "this week" -> from_date is Monday of current week, to_date is today from current date {current_date}
@@ -389,18 +652,6 @@ class WinlostTurnoverNERAgentConfig:
         {parameter_properties}
     """
     few_shot: str = """
-        # Example 1:
-        ## User: Get me a Win Loss Detail Report on day 10
-        ## Output:
-        {{
-            "date_range": "day 10",
-            "from_date": "10/{current_month}/{current_year}",
-            "to_date": "10/{current_month}/{current_year}",
-            "product": "All",
-            "product_detail": "All",
-            "level": "All",
-            "user": "N/A"
-        }}
         
         Example 2:
         ## User: Get me a Win Loss Detail Report for Direct Member who played Product Detail Sportsbook in Sportsbook Product from 01/02/2024 to 15/02/2024
@@ -475,7 +726,9 @@ class WinlostTurnoverNERAgentConfig:
         current_date = get_current_date()
         current_year = get_current_year()   
         current_month = get_current_month()
-   
+
+        last_monday, last_sunday = get_last_week_dates()
+        
         user_prompt = self.user_prompt.format(
             query=query, 
             current_date=current_date,
@@ -486,7 +739,9 @@ class WinlostTurnoverNERAgentConfig:
                 current_date=current_date,
                 current_year=current_year,
                 current_month=current_month,
-                parameter_properties=parameter_properties
+                parameter_properties=parameter_properties,
+                last_monday=last_monday,
+                last_sunday=last_sunday
             ), 
             few_shot=self.few_shot.format(
                 current_month=current_month,
@@ -619,6 +874,22 @@ class TopOutstandingNERAgentConfig:
         {{
             "product": "All",
             "top": 70
+        }}
+        
+        Example 5:
+        ## User: Limit to top 100
+        ## Output:
+        {{
+            "product": "All",
+            "top": 100
+        }}
+        
+        Example 6:
+        ## User: Please give me the top 1 outstanding
+        ## Output:
+        {{
+            "product": "All",
+            "top": 1
         }}
     """
     system_prompt: str = """

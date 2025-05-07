@@ -1,6 +1,9 @@
 import yaml
 import json
 import time
+import numpy as np
+import pickle
+import faiss
 
 from colorama import Fore
 from colorama import Style
@@ -8,6 +11,14 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from typing import Dict, Any, Optional, List
 
+
+def load_bin(path: str) -> faiss.IndexFlatIP:
+    cpu_index = faiss.read_index(path)
+    return cpu_index
+
+def load_pickle(path: str) -> List[str]:
+    with open(path, 'rb') as f:
+        return pickle.load(f)
 
 def load_yaml(file_path: str):
     try:
@@ -173,16 +184,22 @@ def get_yesterday_dates(time_zone: str = "Etc/GMT-4") -> str:
 
 def get_last_week_dates(time_zone: str = "Etc/GMT-4") -> tuple[str, str]:
     """
-    Get the dates from 7 days ago to today in DD/MM/YYYY format.
+    Get the dates from last Monday to Sunday in DD/MM/YYYY format.
     
     Returns:
-        tuple[str, str]: A tuple containing (7_days_ago, today) in DD/MM/YYYY format
+        tuple[str, str]: A tuple containing (last_monday, last_sunday) in DD/MM/YYYY format
     """
     today = datetime.now(ZoneInfo(time_zone))
-    seven_days_ago = today - timedelta(days=7)
     
-    from_date = seven_days_ago.strftime("%d/%m/%Y")
-    to_date = today.strftime("%d/%m/%Y")
+    # Get last Sunday by getting previous day before Monday of current week
+    current_monday = today - timedelta(days=today.weekday())
+    last_sunday = current_monday - timedelta(days=1)
+    
+    # Get last Monday (7 days before last Sunday)
+    last_monday = last_sunday - timedelta(days=6)
+    
+    from_date = last_monday.strftime("%d/%m/%Y")
+    to_date = last_sunday.strftime("%d/%m/%Y")
     
     return from_date, to_date
 
@@ -310,4 +327,87 @@ def flatten_list_2d(list_2d: List[List[Any]]) -> List[Any]:
     return [item for sublist in list_2d for item in sublist]
 
 
+def get_most_common(items: List[str]) -> str:
+    """
+    Get the most common item in a list.
     
+    Args:
+        items (List[str]): The list of items to check
+        
+    Returns:
+        str: The most common item in the list
+    """
+    if not items:
+        return None
+    
+    counts = {}
+    max_count = 0
+    most_common = None
+    
+    for item in items:
+        if item in counts:
+            counts[item] += 1
+        else:
+            counts[item] = 1
+            
+        if counts[item] > max_count:
+            max_count = counts[item]
+            most_common = item
+            
+    return most_common
+
+
+def get_item_statistics(items: List[List[str]], weights: List[float]) -> str:
+    if len(items) != len(weights):
+        raise ValueError("Length of items and weights must match")
+    
+    def compute_prob(item, weight):
+        prob = {}
+        for i in item:
+            if i not in prob:
+                prob[i] = 0
+            prob[i] += 1 / len(item) * weight
+        return prob
+    
+    prob_items = []
+    for i, item in enumerate(items):
+        prob_item = compute_prob(item, weights[i])
+        prob_items.append(prob_item)
+        
+    return prob_items
+
+def get_highest_confidence(items: List[List[str]], weights: List[float]) -> str:
+    prob_items = get_item_statistics(items, weights)
+
+    probs = []
+    items = []
+    for i in prob_items:
+        probs.extend(list(i.values()))
+        items.extend(list(i.keys()))
+        
+    sorted_prob = np.array(probs).argsort()[::-1]
+    sorted_items = np.array(items)[sorted_prob].tolist()
+
+    return sorted_items
+
+def weighted_voting(items: List[List[str]], weights: List[float]) -> str:
+    
+    prob_items = get_item_statistics(items, weights)
+    
+    # Calculate average probability for each unique item
+    final_probs = {}
+    for prob_dict in prob_items:
+        for item, prob in prob_dict.items():
+            if item not in final_probs:
+                final_probs[item] = []
+            final_probs[item].append(prob)
+    
+    # Average the probabilities
+    avg_probs = {}
+    for item, probs in final_probs.items():
+        avg_probs[item] = sum(probs) / len(probs)
+    
+    # Find item with highest probability
+    predicted_item = max(avg_probs.keys(), key=lambda x: avg_probs[x])
+    
+    return predicted_item
