@@ -1,7 +1,7 @@
 from dependency_injector import containers, providers
 from thespian.actors import ActorSystem
 
-from src.service.implement.arb_supporter_impl.prompt_impl import NerAgentConfig, GreetingAgentConfig, GreetingRecognizerAgentConfig, ReportCallingAgentConfig, ConfirmationRecognizerAgentConfig, RemovalEntityDetectionAgentConfig
+from src.service.implement.arb_supporter_impl.prompt_impl import NerAgentConfig, GreetingAgentConfig, GreetingRecognizerAgentConfig, ReportCallingAgentConfig, ConfirmationRecognizerAgentConfig, RemovalEntityDetectionAgentConfig, ReportCallingAgentConfigV2
 
 from src.service.interface.arb_slave_agent.greeting_agent import GreetingAgent
 from src.service.implement.arb_slave_agent_impl.greeting_agent_impl import GreetingAgentImpl
@@ -171,7 +171,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
             name=service_config.report_calling_agent_config.name,
             task_description=service_config.report_calling_agent_config.task_description,
             report_config=report_config,
-            agent_config=ReportCallingAgentConfig,
+            agent_config=ReportCallingAgentConfigV2,
             tools=None
         )
     )

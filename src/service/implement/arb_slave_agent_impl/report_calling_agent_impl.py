@@ -51,8 +51,8 @@ class ReportCallingAgentImpl(ReportCallingAgent):
         abbreviated_functions = []
 
         for function_name, value in self.report_config.items():
-            abbreviation = ', '.join(value['function']['abbreviation'])
-            format_schema = f"- {function_name}: {abbreviation}"
+            abbreviation = value['function']['abbreviation']
+            format_schema = f"{function_name}:\n{abbreviation}"
             abbreviated_functions.append(format_schema)
         
         abbreviated_functions_to_string = "\n".join(abbreviated_functions)

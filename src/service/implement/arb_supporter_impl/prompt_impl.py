@@ -93,14 +93,14 @@ class ConfirmationRecognizerAgentConfig:
 class RemovalEntityDetectionAgentConfig:
     instruction: str = """
         # General conversation guidelines:
-        - Please detect the pattern of user's query if it does not contain any removal request such "no user please", "delete product detail please" so on. Otherwise, default as a empty list {{"params2delete": []}}.
+        - Remember always default as a empty list {{"params2delete": []}} if you cannot recognize the user's query to remove any parameters.
+        - Please recognize the user's query whether it contains any removal request such as "no user please", "delete product detail please" so on. Otherwise, default as a empty list {{"params2delete": []}}.
         - Please help me identify which parameters you want to remove from your query. This is all of the parameters: {entities_as_string}
-        - You must follow the examples below to detect the pattern of user's query and make decision.
+        - You must follow the examples below to detect the pattern of user's query and make decision. 
     """
     few_shot: str = """
         # ***Example Scenarios:***
-        
-        # Examples of removing parameters
+
         - ***User***: "No username please"
         - ***Assistant***: {{"params2delete": ["user"]}}
         
@@ -124,9 +124,17 @@ class RemovalEntityDetectionAgentConfig:
 
         - ***User***: "Remove all filters except the date range"
         - ***Assistant***: {{"params2delete": ["product", "product_detail", "level", "user", "top"]}}
-        
-        # Examples of queries that don't remove parameters
+
         - ***User***: "I want to get winlost report for Sportsbook only"
+        - ***Assistant***: {{"params2delete": []}}
+        
+        - ***User***: "Top 23 outstanding for Number Game"
+        - ***Assistant***: {{"params2delete": []}}
+        
+        - ***User***: "Top 236"
+        - ***Assistant***: {{"params2delete": []}}
+        
+        - ***User***: "wl report for sportsbook only day 26"
         - ***Assistant***: {{"params2delete": []}}
         
         - ***User***: "Show me the report for Number Game"
@@ -138,10 +146,12 @@ class RemovalEntityDetectionAgentConfig:
         - ***User***: "Change the date to last week"
         - ***Assistant***: {{"params2delete": []}}
         
+        - ***User***: "Top 200 outstanding please"
+        - ***Assistant***: {{"params2delete": []}}
+        
         - ***User***: "I want to get current outstanding for Sportsbook and user master1 only"
         - ***Assistant***: {{"params2delete": []}}
 
-        # Examples with multiple parameters
         - ***User***: "Remove user and product filters, keep everything else"
         - ***Assistant***: {{"params2delete": ["user", "product"]}}
         
@@ -477,6 +487,7 @@ class ReportCallingAgentConfig:
             - If the user request is not related to the function, return "N/A"
             - Available functions:
                 {function_description}
+            - Please help me identify which function is being referenced in the user's query based on common abbreviations and variations
             - Try to recognize the funtion abbreviation from user's query
             - Function Abbreviations:
                 {abbreviation}
@@ -488,6 +499,8 @@ class ReportCallingAgentConfig:
     """
     few_shot: str = """
         #📝Example requests and responses:
+        
+        1. Normal conversation
         
         Input: "I need to see the win/loss report from last week"
         Output: {{
@@ -558,6 +571,43 @@ class ReportCallingAgentConfig:
         Output: {{
             "function_called": "/topoutstanding"
         }}
+        
+        2. Abbreviation calling
+        
+        Input: "I want to get wl report for day 10"
+        Output: {{
+            "function_called": "/winlost_detail"
+        }}
+        
+        Input: "I want to get w/l report for day 10" 
+        Output: {{
+            "function_called": "/winlost_detail"
+        }}
+        
+        Input: "Show me the WL detail report"
+        Output: {{
+            "function_called": "/winlost_detail"
+        }}
+        
+        Input: "I want to get to report"
+        Output: {{
+            "function_called": "/turnover_detail"
+        }}
+        
+        Input: "TO report please"
+        Output: {{
+            "function_called": "/turnover_detail"
+        }}
+        
+        Input: "TO report day 15"
+        Output: {{
+            "function_called": "/turnover_detail"
+        }}
+        
+        Input: "I want to get revenue report"
+        Output: {{
+            "function_called": "/turnover_detail"
+        }}
     """
     system_prompt: str = """
         You are an AI assistant that helps determine which function to call based on user's query.
@@ -601,13 +651,91 @@ class ReportCallingAgentConfig:
         return user_prompt
 
 @dataclasses.dataclass
+class ReportCallingAgentConfigV2:
+    instruction: str = """
+        # General conversation guidelines:
+        - Please help me identify which function is being referenced in the user's query based on common abbreviations and variations
+        - Return your answer in JSON format with a single key "function_called"
+        - The available abbreviations are:
+        {abbreviation}
+        - Available functions:
+        {function_description}
+    """
+    
+    few_shot: str = f"""
+    # ***Example Scenarios:***
+    
+    - ***User***: "I want to get wl report for day 10"
+    - ***Assistant***: {{"function_called": "/winlost_detail"}}
+    
+    - ***User***: "I want to get w/l report for day 10" 
+    - ***Assistant***: {{"function_called": "/winlost_detail"}}
+    
+    - ***User***: "Show me the WL detail report"
+    - ***Assistant***: {{"function_called": "/winlost_detail"}}
+    
+    - ***User***: "I want to get to report"
+    - ***Assistant***: {{"function_called": "/turnover_detail"}}
+    
+    - ***User***: "I want to get revenue report"
+    - ***Assistant***: {{"function_called": "/turnover_detail"}}
+    
+    """
+    
+    system_prompt: str = """
+    You are a helpful assistant that identifies which function is abbreviated by user's query
+    """
+    
+    user_prompt: str = """
+        User request: {message}
+
+        {instruction}
+        
+        {few_shot}
+        
+        Based on this request, which function should be called? Return only the JSON response.
+    """
+    
+    format_schema: Dict[str, Any] = dataclasses.field(default_factory=lambda: {
+        "type": "object",
+        "properties": {
+            "function_called": {
+                "type": "string",
+                "description": "The name of the function to call",
+                "enum": [
+                    '/winlost_detail',
+                    '/turnover',
+                    '/outstanding',
+                    '/topoutstanding',
+                    'N/A'
+                ]
+            }
+        },
+        "required": ["function_called"]
+    })
+    
+    def format_prompt(self, message: str, **kwargs) -> str:
+        user_prompt = self.user_prompt.format(
+            message=message, 
+            instruction=self.instruction.format(
+                abbreviation=kwargs['abbreviation'],
+                function_description=kwargs['function_description']
+            ), 
+            few_shot=self.few_shot
+        )
+        return user_prompt
+
+@dataclasses.dataclass
 class WinlostTurnoverNERAgentConfig:
     instruction: str = """
         # Define your task:
-        Extract the most relevant keywords from the following sentence: '{query}'. 
-        Focus on important nouns that convey the core meaning. 
-        Detect any words related to dates such as tomorrow, today, last week, next year, so on, following the example below.
-        Help me convert the date range to the format of YYYY-MM-DD to YYYY-MM-DD.
+        - Extract the most relevant keywords from the following sentence: '{query}'. 
+        - Focus on important nouns that convey the core meaning. 
+        - Detect any words related to dates such as tomorrow, today, last week, next year, so on, following the example below.
+        - Help me convert the date range to the format of YYYY-MM-DD to YYYY-MM-DD.
+        - Here is the list of the final output of product and product detail you should detect:
+        {parameter_properties}
+        
         
         # For date range, please help me convert it to from_date and to_date in DD/MM/YYYY format following these cases:
 
@@ -644,14 +772,23 @@ class WinlostTurnoverNERAgentConfig:
         If no relevant keywords are detected, return 'All' (except for dates, you must fill 'N/A').
         If the date range is not specified, please return 'N/A' for date_range.
         If the product is not specified, please return 'All' for product.
-        If the product detail is not specified, please return 'All' for product_detail.
+        If the product_detail is not specified, please return 'All' for product_detail.
         If the level is not specified, please return 'All' for level.
         If the user is not specified, please return 'N/A' for user.
-        
-        Here is the list of product and product detail you should detect:
-        {parameter_properties}
     """
     few_shot: str = """
+        Example 1:
+        ## User: I want winlost report for Saba basketball of direct member lastweek
+        ## Output:
+        {{
+            "date_range": "lastweek",
+            "from_date": "{last_monday}",
+            "to_date": "{last_sunday}",
+            "product": "All",
+            "product_detail": "SABA Basketball",
+            "level": "Direct Member",
+            "user": "N/A"
+        }}
         
         Example 2:
         ## User: Get me a Win Loss Detail Report for Direct Member who played Product Detail Sportsbook in Sportsbook Product from 01/02/2024 to 15/02/2024
@@ -661,19 +798,19 @@ class WinlostTurnoverNERAgentConfig:
             "from_date": "01/02/2024",
             "to_date": "15/02/2024",
             "product": "Sportsbook",
-            "product_detail": "Sportsbook",
+            "product_detail": "All",
             "level": "Direct Member",
             "user": "N/A"
         }}
         
         Example 3:
-        ## User: Get me a Win Loss Detail Report for Super Agent who played Product Detail SABA Basketball in SABA Basketball Product from 01/02/2024 to 15/02/2024
+        ## User: Get me a Win Loss Detail Report for Super Agent who played Product Detail SABA Basketball from 01/02/2024 to 15/02/2024
         ## Output:
         {{
             "date_range": "01/02/2024 to 15/02/2024",
             "from_date": "01/02/2024",
             "to_date": "15/02/2024",
-            "product": "SABA Basketball",
+            "product": "All",
             "product_detail": "SABA Basketball",
             "level": "Super Agent",
             "user": "N/A"
@@ -721,7 +858,7 @@ class WinlostTurnoverNERAgentConfig:
         "required": ["date_range", "from_date", "to_date", "product", "product_detail", "level", "user"]
     })
     
-    def format_prompt(self, query: str, parameter_properties: str) -> str:
+    def format_prompt(self, query: str, **kwargs) -> str:
         
         current_date = get_current_date()
         current_year = get_current_year()   
@@ -739,13 +876,16 @@ class WinlostTurnoverNERAgentConfig:
                 current_date=current_date,
                 current_year=current_year,
                 current_month=current_month,
-                parameter_properties=parameter_properties,
+                parameter_properties=kwargs['parameter_properties'],
+                # abbreviation=kwargs['abbreviation'],
                 last_monday=last_monday,
                 last_sunday=last_sunday
             ), 
             few_shot=self.few_shot.format(
                 current_month=current_month,
                 current_year=current_year,
+                last_monday=last_monday,
+                last_sunday=last_sunday
             )
         )
         return user_prompt
@@ -760,7 +900,6 @@ class OutstandingNERAgentConfig:
         If the product is not specified, please return 'All' for product.
         If the user is not specified, please return 'N/A' for username.
 
-        
         Here is the list of product you should detect:
         {parameter_properties}
     """
@@ -817,13 +956,14 @@ class OutstandingNERAgentConfig:
         "required": ["product", "user"]
     })
     
-    def format_prompt(self, query: str, parameter_properties: str) -> str:
+    def format_prompt(self, query: str, **kwargs) -> str:
         
         user_prompt = self.user_prompt.format(
             query=query, 
             instruction=self.instruction.format(
                 query=query,
-                parameter_properties=parameter_properties
+                parameter_properties=kwargs['parameter_properties'],
+                # abbreviation=kwargs['abbreviation']
             ), 
             few_shot=self.few_shot
         )
@@ -838,7 +978,7 @@ class TopOutstandingNERAgentConfig:
         If no relevant keywords are detected, return 'All'
         If the product is not specified, please return 'All' for product.
         If the top is not specified, please return 10 for top.
-
+        You must detect correctly the top number from the query.
         
         Here is the list of product you should detect:
         {parameter_properties}
@@ -891,6 +1031,14 @@ class TopOutstandingNERAgentConfig:
             "product": "All",
             "top": 1
         }}
+        
+        Example 7:
+        ## User: top 200 outstanding for Number Game
+        ## Output:
+        {{
+            "product": "Number Game",
+            "top": 200
+        }}
     """
     system_prompt: str = """
     You are an AI assistant majoring for Named Entity Recognition trained to extract entity and categorize queries for Outstanding Report Detail
@@ -912,14 +1060,15 @@ class TopOutstandingNERAgentConfig:
         "required": ["product", "top"]
     })
     
-    def format_prompt(self, query: str, parameter_properties: str) -> str:
+    def format_prompt(self, query: str, **kwargs) -> str:
         
    
         user_prompt = self.user_prompt.format(
             query=query, 
             instruction=self.instruction.format(
                 query=query,
-                parameter_properties=parameter_properties
+                parameter_properties=kwargs['parameter_properties'],
+                # abbreviation=kwargs['abbreviation']
             ), 
             few_shot=self.few_shot
         )

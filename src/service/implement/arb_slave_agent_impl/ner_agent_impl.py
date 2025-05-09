@@ -5,7 +5,7 @@ import re
 from src.service.interface.arb_supporter.llm import LLM
 from src.service.interface.arb_slave_agent.ner_agent import NerAgent
 from src.service.implement.arb_supporter_impl.prompt_impl import NerAgentConfig
-from src.utils.utils import flatten_list_2d, get_last_week_dates, get_last_year_dates, get_last_month_dates, get_this_year_dates
+from src.utils.utils import flatten_list_2d, parse_2d_to_2key_2value, switch_key_value, extract_number, filter_words
 
 class NerAgentImpl(NerAgent):
     """
@@ -92,16 +92,55 @@ class NerAgentImpl(NerAgent):
                 abbreviation_dict = value['abbreviation']
                 for product, abbr_list in abbreviation_dict.items():
                     abbreviation_str = ", ".join(abbr_list)
-                    subabbreviation.append(f"- {product}: {abbreviation_str}")
-                subabbreviation_str = "\n".join(subabbreviation)
+                    abbr_list = ", ".join(abbr_list)
+                    subabbreviation.append(f"{abbr_list}")
+                subabbreviation_str = ", ".join(subabbreviation)
                 format_abbreviation = f"""
-                #### {key}:
-                {subabbreviation_str}
+                ### {key.upper()}: {subabbreviation_str}
                 """
                 abbreviation.append(format_abbreviation)
                 
         abbreviation_str = "\n".join(abbreviation)
         return abbreviation_str
+
+    
+    def __map_abbreviation(self, function_called: str, entities: Dict[str, Any]) -> Dict[str, Any]:
+        func_info = self.report_config[function_called]
+        properties = func_info['function']['parameters']['properties']
+        
+        for key, value in properties.items():
+
+            if "abbreviation" in value:
+                parse_abbreviation = parse_2d_to_2key_2value(value['abbreviation'])
+                parse_abbreviation = switch_key_value(parse_abbreviation)
+                if entities[key] in parse_abbreviation.keys():
+                    entities[key] = parse_abbreviation[entities[key]]
+
+        return entities
+    
+    
+    def __validate(self, function_called: str, entities: Dict[str, Any]) -> bool:
+
+        func_info = self.report_config[function_called]
+        parameter_properties = func_info['function']['parameters']['properties']
+
+        for key, value in parameter_properties.items():
+            if value['enum'] is not None:
+                if entities[key] not in value['enum']:
+                    entities[key] = value['default']
+                
+        return entities
+    
+    
+    def __handle_result_topoutstanding(self, function_called: str, entities: Dict[str, Any], query: str) -> Dict[str, Any]:
+    
+        if function_called == "/topoutstanding":
+            top = extract_number(query)
+            default_value = self._get_default_value(function_called)
+            if entities['top'] == default_value['top'] and top is not None:
+                entities['top'] = top
+        
+        return entities
     
     
     def extract_entities(self, query: str, function_called: str) -> Dict[str, Any]:
@@ -124,7 +163,6 @@ class NerAgentImpl(NerAgent):
             parameter_properties=parameter_properties,
             # abbreviation=abbreviation
         )
-
         messages = [
             {"role": "system", "content": agent.system_prompt},
             {"role": "user", "content": user_prompt}
@@ -141,5 +179,7 @@ class NerAgentImpl(NerAgent):
             return self._get_default_value(function_called)
         
         result = json.loads(response)
-    
+        result = self.__validate(function_called, result)
+        result = self.__handle_result_topoutstanding(function_called, result, query)
+        
         return result

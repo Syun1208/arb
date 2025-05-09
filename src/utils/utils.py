@@ -3,6 +3,7 @@ import json
 import time
 import numpy as np
 import pickle
+import re
 import faiss
 
 from colorama import Fore
@@ -326,6 +327,88 @@ def flatten_list_2d(list_2d: List[List[Any]]) -> List[Any]:
     """
     return [item for sublist in list_2d for item in sublist]
 
+
+def filter_words(query: str, words: List[str]) -> str:
+    """
+    Filter words from a query that match items in a given list, case insensitive.
+    
+    Args:
+        query (str): The input query string to search
+        words (List[str]): List of words to match against
+        
+    Returns:
+        str: The first matching word found, or empty string if no match
+    """
+    # Convert query to lowercase for case-insensitive matching
+    query = query.lower()
+    
+    # Create pattern matching any word in the list
+    pattern = '|'.join(map(re.escape, [w.lower() for w in words]))
+    
+    # Find all matches
+    matches = re.findall(pattern, query)
+    
+    # Return original casing of first match if found
+    if matches:
+        match_lower = matches[0]
+        # Find original word with matching lowercase
+        for word in words:
+            if word.lower() == match_lower:
+                return word
+                
+    return ""
+
+
+def parse_2d_to_2key_2value(input_dict: Dict[str, List[str]]) -> Dict[str, str]:
+    """
+    Parse a dictionary with list values into a flattened dictionary with individual key-value pairs.
+    
+    Args:
+        input_dict (Dict[str, List[str]]): Dictionary with list values
+        e.g. {"Sportsbook": ["SB", "SprtBooks"], "Number Game": ["NG", "Num Game"]}
+        
+    Returns:
+        Dict[str, str]: Flattened dictionary with individual key-value pairs
+        e.g. {"Sportsbook": "SB", "Sportsbook": "SprtBooks", "Number Game": "NG", "Number Game": "Num Game"}
+    """
+    output_dict = {}
+    for key, value_list in input_dict.items():
+        for value in value_list:
+            output_dict[key] = value
+    return output_dict
+
+
+def switch_key_value(input_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Switch the positions of keys and values in a dictionary.
+    
+    Args:
+        input_dict (Dict[str, Any]): Input dictionary to switch
+        
+    Returns:
+        Dict[str, Any]: Dictionary with switched key-value pairs
+    """
+    return {value: key for key, value in input_dict.items()}
+
+
+def extract_number(text: str) -> int:
+    """
+    Extract the first number found in a text string using regular expressions.
+    
+    Args:
+        text (str): The input text to search for numbers
+        
+    Returns:
+        int: The first number found in the text, or None if no number is found
+    """
+    
+    # Find all numbers in the text
+    numbers = re.findall(r'\d+', text)
+    
+    # Return first number found or None if no numbers
+    if numbers:
+        return int(numbers[0])
+    return None
 
 def get_most_common(items: List[str]) -> str:
     """

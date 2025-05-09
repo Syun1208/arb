@@ -87,7 +87,7 @@ class AgentComposerImpl(AgentComposer):
         default_entities = self.ner_agent._get_default_value(function_called)
         if 'date_range' in default_entities:
             del default_entities['date_range']
-        print('🤖 default_entities: ', default_entities)
+
         for removal_entity in removal_entities:
             default_entity = default_entities[removal_entity]
             entities[removal_entity] = default_entity
