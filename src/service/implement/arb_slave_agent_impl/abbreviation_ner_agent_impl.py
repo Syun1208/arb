@@ -97,6 +97,11 @@ class AbbreviationNERAgentImpl(NerAgent):
         return entities
     
     def __handle_username(self, function_called: str, entities: Dict[str, Any]) -> Dict[str, Any]:
+        
+        if len(entities['user'].split(" ")) > 1:
+            entities['user'] = "N/A"
+            return entities
+        
         if function_called in ["/winlost_detail", "/turnover"]:
             parameter_properties = self.report_config[function_called]['function']['parameters']['properties']
             for _, value in parameter_properties.items():
@@ -147,7 +152,7 @@ class AbbreviationNERAgentImpl(NerAgent):
             extracted_entities.update(date_range_response)
 
             # Extract product
-            remaining_parameters_prompt = agent.format_the_others_prompt(message=query, abbreviated_parameters=abbreviated_parameters)
+            remaining_parameters_prompt = agent.format_the_others_prompt(query=query, abbreviated_parameters=abbreviated_parameters)
             remaining_parameters_response = self.__call_llm_extracting(remaining_parameters_prompt, agent.the_others_config)
             extracted_entities.update(remaining_parameters_response)
             

@@ -110,6 +110,9 @@ class RemovalEntityDetectionAgentConfig:
 
         - ***User***: "Remove the date range"
         - ***Assistant***: {{"params2delete": ["from_date", "to_date"]}}
+        
+        - ***User***: "Remove username please"
+        - ***Assistant***: {{"params2delete": ["user"]}}
 
         - ***User***: "Don't include product"
         - ***Assistant***: {{"params2delete": ["product"]}}
@@ -426,6 +429,15 @@ class GreetingRecognizerAgentConfig:
         - ***User***: "No username please"
         - ***Assistant***: {{"is_normal_conversation": 0}}
         
+        - ***User***: "1+1= ?"
+        - ***Assistant***: {{"is_normal_conversation": 1}}
+        
+        - ***User***: "Please remove the date range"
+        - ***Assistant***: {{"is_normal_conversation": 0}}
+        
+        - ***User***: "No username please"
+        - ***Assistant***: {{"is_normal_conversation": 0}}
+        
         - ***User***: "I want to get winlost report day 15 for sportsbook and user leon2346 only"
         - ***Assistant***: {{"is_normal_conversation": 0}}
         
@@ -486,6 +498,7 @@ class ReportCallingAgentConfig:
             - If the user request is not related to the function, return "N/A"
             - If the user request is not clear, return "N/A"
             - If the user request is not related to the function, return "N/A"
+            - If the user request contains the word such as "this report", "current report", "last report", "previous report", etc, return "N/A" 
             - Available functions:
                 {function_description}
             - Please help me identify which function is being referenced in the user's query based on common abbreviations and variations
@@ -502,6 +515,21 @@ class ReportCallingAgentConfig:
         #📝Example requests and responses:
         
         1. Normal conversation
+        
+        Input: "this report is for sportsbook"
+        Output: {{
+            "function_called": "N/A"
+        }}
+        
+        Input: "the current report is for number game"
+        Output: {{
+            "function_called": "N/A"
+        }}
+        
+        Input: "this report for sportsbook"
+        Output: {{
+            "function_called": "N/A"
+        }}
         
         Input: "I need to see the win/loss report from last week"
         Output: {{
@@ -656,6 +684,7 @@ class ReportCallingAgentConfigV2:
     instruction: str = """
         # General conversation guidelines:
         - Please help me identify which function is being referenced in the user's query based on common abbreviations and variations
+        - If the user request contains the word such as "this report", "current report", "last report", "previous report", etc, return "N/A" 
         - Return your answer in JSON format with a single key "function_called"
         - The available abbreviations are:
         {abbreviation}
@@ -665,6 +694,13 @@ class ReportCallingAgentConfigV2:
     
     few_shot: str = f"""
     # ***Example Scenarios:***
+    
+    - ***User***: "this report is for sportsbook"
+    - ***Assistant***: {{ "function_called": "N/A" }}
+    
+    - ***User***: "the current report is for number game"
+    - ***Assistant***: {{ "function_called": "N/A" }}
+    
     
     - ***User***: "I want to get wl report for day 10"
     - ***Assistant***: {{"function_called": "/winlost_detail"}}
@@ -771,7 +807,7 @@ class AbbreviationDateRangeExclusionAgentConfig:
     """
     
     user_prompt: str = """
-    User's message: {message}
+    User's message: {query}
     
     {instructions}
     
@@ -794,11 +830,11 @@ class AbbreviationDateRangeExclusionAgentConfig:
         "required": ["product", "product_detail", "level"]
     })
     
-    def format_prompt(self, message: str, abbreviated_parameters: List[str]) -> str:
+    def format_prompt(self, query: str, abbreviated_parameters: List[str]) -> str:
         return self.user_prompt.format(
-            message=message,
+            query=query,
             instructions=self.instructions.format(
-                query=message,
+                query=query,
                 abbreviated_parameters=abbreviated_parameters
             ),
             few_shot=self.few_shot
