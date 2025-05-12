@@ -10,3 +10,15 @@ default:
 
 spec:
   num_workers: 4
+
+report_configs:
+  - "data/reports/winlost_detail.json"
+  - "data/reports/topoutstanding.json"
+  - "data/reports/outstanding.json"
+  - "data/reports/turnover.json"
+
+service_configs:
+  - "config/service_config/agent_config.yml"
+  - "config/service_config/db_config.yml"
+  - "config/service_config/auth_config.yml"
+  - "config/service_config/llm_config.yml"

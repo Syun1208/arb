@@ -55,13 +55,17 @@ def create_app(env: str) -> FastAPI:
         , arb_nosql_controller
         , arb_vector_db_controller
     ]
+    # Load all report configs at once
+    report_files = config['report_configs']
+    for report_file in report_files:
+        application_container.report_config.from_json(report_file)
 
-    application_container.report_config.from_json("data/reports/alpha_report.json")
-    application_container.service_config.from_yaml(f"config/{env}.yml")
-    application_container.service_config.from_yaml(f"config/service_config/agent_config.yml")
-    application_container.service_config.from_yaml(f"config/service_config/db_config.yml")
-    application_container.service_config.from_yaml(f"config/service_config/auth_config.yml")
-    application_container.service_config.from_yaml(f"config/service_config/llm_config.yml")
+    # Load all service configs at once
+    service_files = config['service_configs']
+    service_files.append(f"config/{env}.yml")
+    for service_file in service_files:
+        application_container.service_config.from_yaml(service_file)
+        
     application_container.wire(modules)
     
     app.container = application_container

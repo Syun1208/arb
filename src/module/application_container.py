@@ -173,7 +173,8 @@ class ApplicationContainer(containers.DeclarativeContainer):
             task_description=service_config.ner_agent_config.task_description,
             report_config=report_config,
             agent_config=AbbreviationNERAgentConfig,
-            tools=None
+            tools=None,
+            num_workers=service_config.default.spec.num_workers
         )
     )
     
@@ -186,7 +187,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
             name=service_config.report_calling_agent_config.name,
             task_description=service_config.report_calling_agent_config.task_description,
             report_config=report_config,
-            agent_config=ReportCallingAgentConfigV2,
+            agent_config=ReportCallingAgentConfig,
             tools=None
         )
     )

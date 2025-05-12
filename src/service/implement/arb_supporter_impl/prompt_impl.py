@@ -618,7 +618,7 @@ class ReportCallingAgentConfig:
             "function_called": "/winlost_detail"
         }}
         
-        Input: "I want to get to report"
+        Input: "I want to get TO report"
         Output: {{
             "function_called": "/turnover_detail"
         }}
@@ -701,7 +701,6 @@ class ReportCallingAgentConfigV2:
     - ***User***: "the current report is for number game"
     - ***Assistant***: {{ "function_called": "N/A" }}
     
-    
     - ***User***: "I want to get wl report for day 10"
     - ***Assistant***: {{"function_called": "/winlost_detail"}}
     
@@ -716,7 +715,6 @@ class ReportCallingAgentConfigV2:
     
     - ***User***: "I want to get revenue report"
     - ***Assistant***: {{"function_called": "/turnover_detail"}}
-    
     """
     
     system_prompt: str = """

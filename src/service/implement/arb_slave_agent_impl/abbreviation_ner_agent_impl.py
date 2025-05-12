@@ -1,6 +1,6 @@
 from typing import Dict, Any, List
 import json
-import re
+from concurrent.futures import ThreadPoolExecutor
 
 from src.service.interface.arb_slave_agent.ner_agent import NerAgent
 from src.service.interface.arb_supporter.llm import LLM
@@ -22,7 +22,8 @@ class AbbreviationNERAgentImpl(NerAgent):
         task_description: str,
         report_config: Dict[str, Any],
         agent_config: NerAgentConfig,
-        tools: List[Any]
+        tools: List[Any],
+        num_workers: int
     ) -> None:
         super(AbbreviationNERAgentImpl, self).__init__()
         
@@ -33,6 +34,7 @@ class AbbreviationNERAgentImpl(NerAgent):
         self.report_config = report_config
         self.agent_config = agent_config()
         self.tools = tools
+        self.num_workers = num_workers
         
         
     def __repr__(self) -> str:
@@ -146,14 +148,20 @@ class AbbreviationNERAgentImpl(NerAgent):
         if function_called in ["/winlost_detail", "/turnover"]:
             extracted_entities = {}
 
-            # Extract date range
+            # Prompts
             date_range_prompt = agent.format_date_range_prompt(query=query)
-            date_range_response = self.__call_llm_extracting(date_range_prompt, agent.date_range_config)
-            extracted_entities.update(date_range_response)
-
-            # Extract product
             remaining_parameters_prompt = agent.format_the_others_prompt(query=query, abbreviated_parameters=abbreviated_parameters)
-            remaining_parameters_response = self.__call_llm_extracting(remaining_parameters_prompt, agent.the_others_config)
+
+            # Run extractions in parallel using threads
+            with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+                date_range_future = executor.submit(self.__call_llm_extracting, date_range_prompt, agent.date_range_config)
+                remaining_params_future = executor.submit(self.__call_llm_extracting, remaining_parameters_prompt, agent.the_others_config)
+
+                date_range_response = date_range_future.result()
+                remaining_parameters_response = remaining_params_future.result()
+
+            # Update extracted entities with results
+            extracted_entities.update(date_range_response)
             extracted_entities.update(remaining_parameters_response)
             
             extracted_entities = self.__handle_username(function_called, extracted_entities)
