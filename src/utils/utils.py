@@ -359,6 +359,20 @@ def filter_words(query: str, words: List[str]) -> str:
     return ""
 
 
+def contains_special_chars(text: str) -> bool:
+    """
+    Check if text contains special characters.
+    
+    Args:
+        text (str): Text to check
+        
+    Returns:
+        bool: True if text contains special characters, False otherwise
+    """
+    special_chars = r'[!@#$%^&*()_+\-=\[\]{};:\'",.<>/?\\|`~]'
+    return bool(re.search(special_chars, text))
+
+
 def parse_2d_to_2key_2value(input_dict: Dict[str, List[str]]) -> Dict[str, str]:
     """
     Parse a dictionary with list values into a flattened dictionary with individual key-value pairs.

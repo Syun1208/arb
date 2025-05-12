@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from src.service.interface.arb_slave_agent.ner_agent import NerAgent
 from src.service.interface.arb_supporter.llm import LLM
 from src.service.implement.arb_supporter_impl.prompt_impl import NerAgentConfig
-from src.utils.utils import extract_number, flatten_list_2d
+from src.utils.utils import extract_number, flatten_list_2d, contains_special_chars
 
 
 class AbbreviationNERAgentImpl(NerAgent):
@@ -119,8 +119,8 @@ class AbbreviationNERAgentImpl(NerAgent):
         return entities
     
     def __handle_username(self, function_called: str, entities: Dict[str, Any]) -> Dict[str, Any]:
-        
-        if len(entities['user'].split(" ")) > 1:
+
+        if len(entities['user'].split(" ")) > 1 or contains_special_chars(entities['user']):
             entities['user'] = "N/A"
             return entities
         

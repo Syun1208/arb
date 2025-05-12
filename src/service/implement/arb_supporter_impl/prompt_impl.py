@@ -22,6 +22,12 @@ class ConfirmationRecognizerAgentConfig:
         - ***User***: "I want to confirm it"
         - ***Assistant***: {{"is_confirmed": 1}}
         
+        - ***User***: "I want to get wl report for CRK please"
+        - ***Assistant***: {{"is_confirmed": 0}}
+        
+        - ***User***: "Get me the report for sb only"
+        - ***Assistant***: {{"is_confirmed": 0}}
+        
         - ***User***: "Yes, do it."
         - ***Assistant***: {{"is_confirmed": 1}}
 
@@ -214,6 +220,7 @@ class RemovalEntityDetectionAgentConfigV2:
         - If there are no explicit removal signs in the user's query, ALWAYS return an empty list: {{"params2delete": []}}.
         - Use the current entities: {entities_as_json} as reference, but DO NOT delete any parameter unless explicitly instructed by the user.
         - Be cautious and avoid making assumptions about removal unless the user's intent is crystal clear.
+        - You must follow the example to make decision
     """
     few_shot: str = """
         # ***Example Scenarios:***
@@ -308,6 +315,17 @@ class RemovalEntityDetectionAgentConfigV2:
             "to_date": "N/A",
             "product": "Number Game",
             "product_detail": "All",
+            "level": "All",
+            "user": "N/A"
+        }}
+        - ***Assistant***: {{"params2delete": []}}
+        
+        - ***User***: "I want wl report for product Bitcoin and product detail SABA other sports"
+        - ***Current entities***: {{
+            "from_date": "N/A",
+            "to_date": "N/A",
+            "product": "Bitcoin",
+            "product_detail": "SABA Other Sports",
             "level": "All",
             "user": "N/A"
         }}
@@ -495,9 +513,8 @@ class GreetingRecognizerAgentConfig:
 class ReportCallingAgentConfig:
     instruction: str = """
         # ⚠️Note that:
-            - If the user request is not related to the function, return "N/A"
+            - If the user request is not related to the defined functions, return "N/A"
             - If the user request is not clear, return "N/A"
-            - If the user request is not related to the function, return "N/A"
             - If the user request contains the word such as "this report", "current report", "last report", "previous report", etc, return "N/A" 
             - Available functions:
                 {function_description}
@@ -534,6 +551,11 @@ class ReportCallingAgentConfig:
         Input: "I need to see the win/loss report from last week"
         Output: {{
             "function_called": "/winlost_detail"
+        }}
+        
+        Input: "Day 15 please"
+        Output: {{
+            "function_called": "N/A"
         }}
         
         Input: "w/l please bro"
@@ -1005,6 +1027,12 @@ class ProductNERConfig:
             "product": "Sportsbook"
         }}
         
+        - ***User***: i want wl report for product Bitcoin and product detail SABA other sports
+        - ***Assistant***:
+        {{
+            "product": "Bitcoin"
+        }}
+        
         - ***User***: Win/Loss details for RNG Keno
         - ***Assistant***:
         {{
@@ -1121,6 +1149,12 @@ class ProductDetailNERConfig:
         - ***Assistant***:
         {{
             "product_detail": "SABA Basketball"
+        }}
+        
+        - ***User***: i want wl report for product Bitcoin and product detail SABA other sports
+        - ***Assistant***:
+        {{
+            "product_detail": "SABA Other Sports"
         }}
         
         - ***User***: "I want to get wl report for SBEPG and SB"
