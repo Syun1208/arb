@@ -1,7 +1,7 @@
 from dependency_injector import containers, providers
 from thespian.actors import ActorSystem
 
-from src.service.implement.arb_supporter_impl.prompt_impl import NerAgentConfig, GreetingAgentConfig, GreetingRecognizerAgentConfig, ReportCallingAgentConfig, ConfirmationRecognizerAgentConfig, RemovalEntityDetectionAgentConfig, ReportCallingAgentConfigV2
+from src.service.implement.arb_supporter_impl.prompt_impl import AbbreviationNERAgentConfig, NerAgentConfig, GreetingAgentConfig, GreetingRecognizerAgentConfig, ReportCallingAgentConfig, ConfirmationRecognizerAgentConfig, RemovalEntityDetectionAgentConfig, ReportCallingAgentConfigV2
 
 from src.service.interface.arb_slave_agent.greeting_agent import GreetingAgent
 from src.service.implement.arb_slave_agent_impl.greeting_agent_impl import GreetingAgentImpl
@@ -18,6 +18,7 @@ from src.service.implement.arb_slave_agent_impl.confirmation_recognizer_agent_im
 
 from src.service.interface.arb_slave_agent.ner_agent import NerAgent
 from src.service.implement.arb_slave_agent_impl.ner_agent_impl import NerAgentImpl
+from src.service.implement.arb_slave_agent_impl.abbreviation_ner_agent_impl import AbbreviationNERAgentImpl
 
 from src.service.interface.arb_service.arb_db_service import ARBDBService
 from src.service.implement.arb_service_impl.arb_db_service_impl import ARBDBServiceImpl
@@ -148,16 +149,30 @@ class ApplicationContainer(containers.DeclarativeContainer):
         )
     )
     
-    ner_agent = providers.AbstractSingleton(NerAgent)
-    ner_agent.override(
+    # ner_agent = providers.AbstractSingleton(NerAgent)
+    # ner_agent.override(
+    #     providers.Singleton(
+    #         NerAgentImpl,
+    #         llm=llm,
+    #         model=service_config.ner_agent_config.llm_model,
+    #         name=service_config.ner_agent_config.name,
+    #         task_description=service_config.ner_agent_config.task_description,
+    #         report_config=report_config,
+    #         agent_config=NerAgentConfig,
+    #         tools=None
+    #     )
+    # )
+    
+    abbreviation_ner_agent = providers.AbstractSingleton(NerAgent)
+    abbreviation_ner_agent.override(
         providers.Singleton(
-            NerAgentImpl,
+            AbbreviationNERAgentImpl,
             llm=llm,
             model=service_config.ner_agent_config.llm_model,
             name=service_config.ner_agent_config.name,
             task_description=service_config.ner_agent_config.task_description,
             report_config=report_config,
-            agent_config=NerAgentConfig,
+            agent_config=AbbreviationNERAgentConfig,
             tools=None
         )
     )
@@ -205,6 +220,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
             num_workers=service_config.abbreviation_recognizer_agent_config.num_workers
         )
     )
+    
     agent_composer = providers.AbstractSingleton(AgentComposer)
     agent_composer.override(
         providers.Singleton(
@@ -212,7 +228,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
             greeting_agent=greeting_agent,
             confirmation_recognizer_agent=confirmation_recognizer_agent,
             removal_entity_detection_agent=removal_entity_detection_agent,
-            ner_agent=ner_agent,
+            ner_agent=abbreviation_ner_agent,
             report_calling_agent=report_calling_agent,
             greeting_recognizer_agent=greeting_recognizer_agent,
             abbreviation_recognizer_agent=abbreviation_recognizer_agent,

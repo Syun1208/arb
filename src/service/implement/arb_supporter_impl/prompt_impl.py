@@ -93,10 +93,11 @@ class ConfirmationRecognizerAgentConfig:
 class RemovalEntityDetectionAgentConfig:
     instruction: str = """
         # General conversation guidelines:
-        - Remember always default as a empty list {{"params2delete": []}} if you cannot recognize the user's query to remove any parameters.
-        - Please recognize the user's query whether it contains any removal request such as "no user please", "delete product detail please" so on. Otherwise, default as a empty list {{"params2delete": []}}.
-        - Please help me identify which parameters you want to remove from your query. This is all of the parameters: {entities_as_string}
-        - You must follow the examples below to detect the pattern of user's query and make decision. 
+        - Your task is to STRICTLY detect parameters to delete ONLY when the user's query explicitly indicates removal, such as "no user please", "delete product detail please", etc.
+        - If there are no explicit removal signs in the user's query, ALWAYS return an empty list: {{"params2delete": []}}.
+        - Use the current entities: {entities_as_string} as reference, but DO NOT delete any parameter unless explicitly instructed by the user.
+        - Be cautious and avoid making assumptions about removal unless the user's intent is crystal clear.
+
     """
     few_shot: str = """
         # ***Example Scenarios:***
@@ -206,10 +207,10 @@ class RemovalEntityDetectionAgentConfig:
 class RemovalEntityDetectionAgentConfigV2:
     instruction: str = """
         # General conversation guidelines:
-        - Please detect the pattern of user's query if it does not contain any removal request such "no user please", "delete product detail please" so on. Otherwise, default as a empty list {{"params2delete": []}}.
-        - Please help me identify which parameters you want to remove from your query. This is all of the parameters: {entities_as_string}, "N/A"
-        - Return your answer in JSON format with a single key "params2delete"
-        - Based on the current entities: {entities_as_json}, detect which entity is required to delete from user's query.
+        - Your task is to STRICTLY detect parameters to delete ONLY when the user's query explicitly indicates removal, such as "no user please", "delete product detail please", etc.
+        - If there are no explicit removal signs in the user's query, ALWAYS return an empty list: {{"params2delete": []}}.
+        - Use the current entities: {entities_as_json} as reference, but DO NOT delete any parameter unless explicitly instructed by the user.
+        - Be cautious and avoid making assumptions about removal unless the user's intent is crystal clear.
     """
     few_shot: str = """
         # ***Example Scenarios:***
@@ -726,16 +727,92 @@ class ReportCallingAgentConfigV2:
         return user_prompt
 
 @dataclasses.dataclass
-class WinlostTurnoverNERAgentConfig:
+class AbbreviationDateRangeExclusionAgentConfig:
+    instructions: str= """
+    # Define your task:
+    - Extract the most relevant keywords from the following sentence: '{query}'. 
+    - You must detect all the keywords based on the abbreviation below:
+        {abbreviated_parameters}
+    - Return the following format output:
+        {{
+            "product": "<product_name>",
+            "product_detail": "<product_detail_name>",
+            "level": "<level_name>"
+        }}     
+    - If the product is not specified, please return 'All' for product.
+    - If the product_detail is not specified, please return 'All' for product_detail.
+    - If the level is not specified, please return 'All' for level.
+    """
+    
+    few_shot: str = f"""
+    # ***Example Scenarios:***
+    
+    - ***User***: "SBB please"
+    - ***Assistant***: {{"product": "All", "product_detail": "SABA Basketball", "level": "All"}}
+    
+    - ***User***: "I want to get wl report for SBEPG and SB"
+    - ***Assistant***: {{"product": "Sportsbook", "product_detail": "SABA E-Sports PinGoal", "level": "All"}}
+    
+    - ***User***: "SB please for wl report"
+    - ***Assistant***: {{"product": "Sportsbook", "product_detail": "All", "level": "All"}} 
+    
+    - ***User***: "Give me wl report for Num GAME" 
+    - ***Assistant***: {{"product": "Number Game", "product_detail": "All", "level": "All"}}
+    
+    - ***User***: "Show me the WL detail report for sag"
+    - ***Assistant***: {{"product": "SA Gaming", "product_detail": "All", "level": "All"}}
+    
+     - ***User***: "I want to know wl report for sb basket pin and funky games please"
+    - ***Assistant***: {{"product": "Funky Games", "product_detail": "SABA Basketball PinGoal", "level": "All"}}
+    """
+    
+    system_prompt: str = """
+        You are an AI assistant majoring for Named Entity Recognition trained to extract entity and categorize queries for Winlost Report Detail
+    """
+    
+    user_prompt: str = """
+    User's message: {message}
+    
+    {instructions}
+    
+    {few_shot}
+    """
+    
+    format_schema: Dict[str, Any] = dataclasses.field(default_factory=lambda: {
+        "type": "object",
+        "properties": {
+            "product": {
+                "type": "string"
+            },
+            "product_detail": {
+                "type": "string"
+            },
+            "level": {
+                "type": "string"
+            }
+        },
+        "required": ["product", "product_detail", "level"]
+    })
+    
+    def format_prompt(self, message: str, abbreviated_parameters: List[str]) -> str:
+        return self.user_prompt.format(
+            message=message,
+            instructions=self.instructions.format(
+                query=message,
+                abbreviated_parameters=abbreviated_parameters
+            ),
+            few_shot=self.few_shot
+        )
+    
+@dataclasses.dataclass
+class DateRangeNERConfig:
     instruction: str = """
         # Define your task:
-        - Extract the most relevant keywords from the following sentence: '{query}'. 
+        - Extract the most relevant keywords from the following query: '{query}'. 
         - Focus on important nouns that convey the core meaning. 
         - Detect any words related to dates such as tomorrow, today, last week, next year, so on, following the example below.
         - Help me convert the date range to the format of YYYY-MM-DD to YYYY-MM-DD.
-        - Here is the list of the final output of product and product detail you should detect:
-        {parameter_properties}
-        
+        - You must strictly follow the examples below.
         
         # For date range, please help me convert it to from_date and to_date in DD/MM/YYYY format following these cases:
 
@@ -768,65 +845,48 @@ class WinlostTurnoverNERAgentConfig:
         5. If no date is specified:
            - Set date_range as "N/A"
            - Set both from_date and to_date as "N/A"
-           
-        If no relevant keywords are detected, return 'All' (except for dates, you must fill 'N/A').
-        If the date range is not specified, please return 'N/A' for date_range.
-        If the product is not specified, please return 'All' for product.
-        If the product_detail is not specified, please return 'All' for product_detail.
-        If the level is not specified, please return 'All' for level.
-        If the user is not specified, please return 'N/A' for user.
+
+        6. If the user is not specified, please return 'N/A' for user. 
     """
     few_shot: str = """
-        Example 1:
-        ## User: I want winlost report for Saba basketball of direct member lastweek
-        ## Output:
-        {{
-            "date_range": "lastweek",
-            "from_date": "{last_monday}",
-            "to_date": "{last_sunday}",
-            "product": "All",
-            "product_detail": "SABA Basketball",
-            "level": "Direct Member",
-            "user": "N/A"
-        }}
         
-        Example 2:
-        ## User: Get me a Win Loss Detail Report for Direct Member who played Product Detail Sportsbook in Sportsbook Product from 01/02/2024 to 15/02/2024
-        ## Output:
-        {{
-            "date_range": "01/02/2024 to 15/02/2024",
-            "from_date": "01/02/2024",
-            "to_date": "15/02/2024",
-            "product": "Sportsbook",
-            "product_detail": "All",
-            "level": "Direct Member",
-            "user": "N/A"
-        }}
-        
-        Example 3:
-        ## User: Get me a Win Loss Detail Report for Super Agent who played Product Detail SABA Basketball from 01/02/2024 to 15/02/2024
-        ## Output:
-        {{
-            "date_range": "01/02/2024 to 15/02/2024",
-            "from_date": "01/02/2024",
-            "to_date": "15/02/2024",
-            "product": "All",
-            "product_detail": "SABA Basketball",
-            "level": "Super Agent",
-            "user": "N/A"
-        }}
-        
-        Example 4:
-        ## User: Win/Loss details for Product Sportsbook
+        # Example 1:
+        ## query: Win/Loss details for Product Virtual Sports for user jackie123
         ## Output:
         {{
             "date_range": "N/A",
             "from_date": "N/A",
             "to_date": "N/A",
-            "product": "Sportsbook",
-            "product_detail": "All",
-            "level": "All",
-            "user": "N/A"
+            "user": "jackie123"
+        }}
+        Example 2:
+        ## query: Get me a Win Loss Detail Report for Direct Member who played Product Detail Sportsbook in Sportsbook Product from 01/02/2024 to 15/02/2024
+        ## Output:
+        {{
+            "date_range": "01/02/2024 to 15/02/2024",
+            "from_date": "01/02/2024",
+            "to_date": "15/02/2024",
+            "user" : "N\A"
+        }}
+        
+        Example 3:
+        ## query: Get me a Win Loss Detail Report for Super Agent who played Product Detail SABA Basketball in SABA Basketball Product from 01/02/2024 to 15/02/2024
+        ## Output:
+        {{
+            "date_range": "01/02/2024 to 15/02/2024",
+            "from_date": "01/02/2024",
+            "to_date": "15/02/2024",
+            "user" : "N\A"
+        }}
+        
+        Example 4:
+        ## query: Win/Loss details for Product Sportsbook for user123
+        ## Output:
+        {{
+            "date_range": "N/A",
+            "from_date": "N/A",
+            "to_date": "N/A",
+            "user"  : "user123"
         }}
     """
     system_prompt: str = """
@@ -850,15 +910,12 @@ class WinlostTurnoverNERAgentConfig:
             "date_range": {"type": "string"},
             "from_date": {"type": "string"},
             "to_date": {"type": "string"},
-            "product": {"type": "string"},
-            "product_detail": {"type": "string"},
-            "level": {"type": "string"},
-            "user": {"type": "string"}
+            "user" : {"type": "string"}
         },
-        "required": ["date_range", "from_date", "to_date", "product", "product_detail", "level", "user"]
+        "required": ["date_range", "from_date", "to_date", "user"]
     })
     
-    def format_prompt(self, query: str, **kwargs) -> str:
+    def format_prompt(self, query: str) -> str:
         
         current_date = get_current_date()
         current_year = get_current_year()   
@@ -876,8 +933,6 @@ class WinlostTurnoverNERAgentConfig:
                 current_date=current_date,
                 current_year=current_year,
                 current_month=current_month,
-                parameter_properties=kwargs['parameter_properties'],
-                # abbreviation=kwargs['abbreviation'],
                 last_monday=last_monday,
                 last_sunday=last_sunday
             ), 
@@ -890,6 +945,397 @@ class WinlostTurnoverNERAgentConfig:
         )
         return user_prompt
 
+@dataclasses.dataclass
+class ProductNERConfig:
+
+    system_prompt: str = """
+    You are an AI assistant majoring for Named Entity Recognition trained to extract entity and categorize queries for Winlost Report Detail
+    """
+    instruction: str = """
+        # Define your task:
+        Extract product information from the following sentence: '{query}'.
+        If no product is specified, return 'All'.
+        
+        Here is the list of products you should detect (PLEASE ONLY return product name that is in the list):
+        ### PRODUCT = {lowercase_products}
+    """
+    few_shot: str = """
+        # Example 1:
+        ## User: Get me a Win Loss Detail Report for Sportsbook
+        ## Output:
+        {{
+            "product": "Sportsbook"
+        }}
+        
+        # Example 2:
+        ## User: Win/Loss details for RNG Keno
+        ## Output:
+        {{
+            "product": "RNG Keno"
+        }}
+        
+        # Example 3:
+        ## User: Show me the report
+        ## Output:
+        {{
+            "product": "All"
+        }}
+    """
+    user_prompt: str = """
+        {instruction}
+        
+        {few_shot}
+    """
+    format_schema: Dict[str, Any] = dataclasses.field(default_factory=lambda: {
+        "type": "object",
+        "properties": {
+            "product": {"type": "string"}
+        },
+        "required": ["product"]
+    })
+    
+    def format_prompt(self, query: str, product_enums: List[str]) -> str:
+        # lowercase_products = [p.lower() for p in product_enums]
+        # print(query)
+        instruction_with_products = self.instruction.format(query=query, lowercase_products=product_enums)
+        return self.user_prompt.format(
+            query=query,
+            instruction=instruction_with_products,
+            few_shot=self.few_shot
+        )
+
+@dataclasses.dataclass
+class ProductDetailNERConfig:
+    system_prompt: str = """
+    You are an AI assistant majoring for Named Entity Recognition trained to extract entity and categorize queries for Winlost Report Detail
+    """
+
+    instruction: str = """
+        # Define your task:
+        Extract product detail information from the following sentence: '{query}'.
+        If no product detail is specified, return 'All'.
+        
+        Here is the list of product details you should detect (PLEASE ONLY return product detail name that is in the list):
+        ### PRODUCT_DETAIL = {lowercase_product_details}
+    """
+    few_shot: str = """
+        # Example 1:
+        ## User: Get me a Win Loss Detail Report for Product Detail Sportsbook
+        ## Output:
+        {{
+            "product_detail": "Sportsbook"
+        }}
+        
+        # Example 2:
+        ## User: Win/Loss details for Product Detail SABA Basketball
+        ## Output:
+        {{
+            "product_detail": "SABA Basketball"
+        }}
+        
+        # Example 3:
+        ## User: Show me the report
+        ## Output:
+        {{
+            "product_detail": "All"
+        }}
+    """
+    user_prompt: str = """       
+        {instruction}
+        
+        {few_shot}
+    """
+    format_schema: Dict[str, Any] = dataclasses.field(default_factory=lambda: {
+        "type": "object",
+        "properties": {
+            "product_detail": {"type": "string"}
+        },
+        "required": ["product_detail"]
+    })
+    
+    def format_prompt(self, query: str, product_detail_enums: List[str]) -> str:
+        # lowercase_product_details = [pd.lower() for pd in product_detail_enums]
+        instruction_with_product_details = self.instruction.format(query=query, lowercase_product_details=product_detail_enums)
+        return self.user_prompt.format(
+            query=query,
+            instruction=instruction_with_product_details,
+            few_shot=self.few_shot
+        )
+
+@dataclasses.dataclass
+class LevelNERConfig:
+    system_prompt: str = """
+    You are an AI assistant majoring for Named Entity Recognition trained to extract entity and categorize queries for Winlost Report Detail
+    """
+
+    instruction: str = """
+        # Define your task:
+        Extract level information from the following sentence: '{query}'.
+        If no level is specified, return 'All'.
+        
+        Here is the list of levels you should detect:
+        ### LEVEL = {lowercase_levels}
+    """
+    few_shot: str = """
+        # Example 1:
+        ## User: Get me a Win Loss Detail Report for Direct Member
+        ## Output:
+        {{
+            "level": "Direct Member"
+        }}
+        
+        # Example 2:
+        ## User: Win/Loss details for Super Agent
+        ## Output:
+        {{
+            "level": "Super Agent"
+        }}
+        
+        # Example 3:
+        ## User: Show me the report
+        ## Output:
+        {{
+            "level": "All"
+        }}
+    """
+    user_prompt: str = """
+        
+        {instruction}
+        
+        {few_shot}
+    """
+    format_schema: Dict[str, Any] = dataclasses.field(default_factory=lambda: {
+        "type": "object",
+        "properties": {
+            "level": {"type": "string"}
+        },
+        "required": ["level"]
+    })
+    
+    def format_prompt(self, query: str, level_enums: List[str]) -> str:
+
+        instruction_with_levels = self.instruction.format(query=query, lowercase_levels=level_enums)
+        return self.user_prompt.format(
+            query=query,
+            instruction=instruction_with_levels,
+            few_shot=self.few_shot
+        )
+
+@dataclasses.dataclass
+class WinlostTurnoverNERAgentConfig:
+    date_range_config: DateRangeNERConfig = dataclasses.field(default_factory=lambda: DateRangeNERConfig())
+    product_config: ProductNERConfig = dataclasses.field(default_factory=lambda: ProductNERConfig())
+    product_detail_config: ProductDetailNERConfig = dataclasses.field(default_factory=lambda: ProductDetailNERConfig())
+    level_config: LevelNERConfig = dataclasses.field(default_factory=lambda: LevelNERConfig())
+
+    def format_date_range_prompt(self, query: str, parameter_properties: List[str]) -> str:
+        return self.date_range_config.format_prompt(query, parameter_properties)
+    
+    def format_product_prompt(self, query: str, product_enums: List[str]) -> str:
+        return self.product_config.format_prompt(query, product_enums)
+    
+    def format_product_detail_prompt(self, query: str, product_detail_enums: List[str]) -> str:
+        return self.product_detail_config.format_prompt(query, product_detail_enums)
+    
+    def format_level_prompt(self, query: str, level_enums: List[str]) -> str:
+        return self.level_config.format_prompt(query, level_enums)
+    
+@dataclasses.dataclass
+class AbbreviationWinlostTurnoverNERAgentConfig:
+    date_range_config: DateRangeNERConfig = dataclasses.field(default_factory=lambda: DateRangeNERConfig())
+    the_others_config: AbbreviationDateRangeExclusionAgentConfig = dataclasses.field(default_factory=lambda: AbbreviationDateRangeExclusionAgentConfig())
+
+    def format_date_range_prompt(self, query: str) -> str:
+        return self.date_range_config.format_prompt(query)
+
+    def format_the_others_prompt(self, query: str, abbreviated_parameters: List[str]) -> str:
+        return self.the_others_config.format_prompt(query=query, abbreviated_parameters=abbreviated_parameters)
+
+@dataclasses.dataclass
+class AbbreviationOutstandingNERAgentConfig:
+    instruction: str = """
+    # Define your task:
+    - Extract the most relevant keywords from the following sentence: '{query}'. 
+    - You must detect all the keywords based on the abbreviation below:
+        {abbreviated_parameters}
+    - Return the following format output:
+        {{
+            "product": "<product_name>",
+            "user": "<user_name>"
+        }}     
+    - If the product is not specified, please return 'All' for product.
+    - If the user is not specified, please return 'N/A' for user.
+    """
+    few_shot: str = """
+        # Example 1:
+        ## User: My current outstanding for sb
+        ## Output:
+        {{
+            "product": "Sportsbook",
+            "user": "N/A"
+        }}
+        
+        Example 2:
+        ## User: I want sprtbook only
+        ## Output:
+        {{
+            "product": "Sportsbook",
+            "user": "N/A"
+        }}
+        
+        Example 3:
+        ## User: The outstanding of Master1 for num game
+        ## Output:
+        {{
+            "product": "Number Game",
+            "user": "Master1"
+        }}
+        
+        Example 4:
+        ## User: Outstanding report for sg
+        ## Output:
+        {{
+            "product": "SG",
+            "user": "N/A"
+        }}
+    """
+    system_prompt: str = """
+    You are an AI assistant majoring for Named Entity Recognition trained to extract entity and categorize queries for Outstanding Report Detail
+    """
+    user_prompt: str = """
+
+        User request: {query}
+
+        {instruction}
+
+        {few_shot}
+    """
+    format_schema: Dict[str, Any] = dataclasses.field(default_factory=lambda: {
+        "type": "object",
+        "properties": {
+            "product": {"type": "string"},
+            "user": {"type": "string"}
+        },
+        "required": ["product", "user"]
+    })
+    
+    def format_prompt(self, query: str, **kwargs) -> str:
+        
+        user_prompt = self.user_prompt.format(
+            query=query, 
+            instruction=self.instruction.format(
+                query=query,
+                parameter_properties=kwargs['abbreviated_parameters'],
+            ), 
+            few_shot=self.few_shot
+        )
+        return user_prompt
+ 
+@dataclasses.dataclass
+class AbbreviationTopOutstandingNERAgentConfig:
+    instruction: str = """
+    # Define your task:
+    - Extract the most relevant keywords from the following sentence: '{query}'. 
+    - You must detect all the keywords based on the abbreviation below:
+        {abbreviated_parameters}
+    - Return the following format output:
+        {{
+            "product": "<product_name>",
+            "top": "<top_number>"
+        }}     
+    - If the product is not specified, please return 'All' for product.
+    - If the top is not specified, please return 10 for top.
+    """
+    few_shot: str = """
+        # Example 1:
+        ## User: I want to get top outstanding for sb only
+        ## Output:
+        {{
+            "product": "Sportsbook",
+            "top": 10
+        }}
+        
+        Example 2:
+        ## User: Top 40 Outstanding of sb
+        ## Output:
+        {{
+            "product": "Sportsbook",
+            "top": 40
+        }}
+        
+        Example 3:
+        ## User: give me the first 20 outstanding sorting from highest to lowest for btc
+        ## Output:
+        {{
+            "product": "Bitcoin",
+            "top": 20
+        }}
+        
+        Example 4:
+        ## User: give me the first 70 outstanding decreasing for yb
+        ## Output:
+        {{
+            "product": "YeeBet",
+            "top": 70
+        }}
+        
+        Example 5:
+        ## User: Limit to top 100 FOR l22
+        ## Output:
+        {{
+            "product": "Live22",
+            "top": 100
+        }}
+        
+        Example 6:
+        ## User: Please give me the top 1 outstanding for sbc
+        ## Output:
+        {{
+            "product": "Saba Coins",
+            "top": 1
+        }}
+        
+        Example 7:
+        ## User: top 200 outstanding for Number Game for fc
+        ## Output:
+        {{
+            "product": "FA CHAI",
+            "top": 200
+        }}
+    """
+    system_prompt: str = """
+    You are an AI assistant majoring for Named Entity Recognition trained to extract entity and categorize queries for Outstanding Report Detail
+    """
+    user_prompt: str = """
+
+        User request: {query}
+
+        {instruction}
+
+        {few_shot}
+    """
+    format_schema: Dict[str, Any] = dataclasses.field(default_factory=lambda: {
+        "type": "object",
+        "properties": {
+            "product": {"type": "string"},
+            "top": {"type": "integer"}
+        },
+        "required": ["product", "top"]
+    })
+    
+    def format_prompt(self, query: str, **kwargs) -> str:
+        
+   
+        user_prompt = self.user_prompt.format(
+            query=query, 
+            instruction=self.instruction.format(
+                query=query,
+                abbreviated_parameters=kwargs['abbreviated_parameters'],
+            ), 
+            few_shot=self.few_shot
+        )
+        return user_prompt
+    
 @dataclasses.dataclass
 class OutstandingNERAgentConfig:
     instruction: str = """
@@ -1079,6 +1525,24 @@ class NerAgentConfig:
     winlost_turnover_ner_agent_config: WinlostTurnoverNERAgentConfig = WinlostTurnoverNERAgentConfig
     outstanding_ner_agent_config: OutstandingNERAgentConfig = OutstandingNERAgentConfig
     top_outstanding_ner_agent_config: TopOutstandingNERAgentConfig = TopOutstandingNERAgentConfig
+    
+    
+    def get_agent(self, function_called: str) -> Any:
+    
+        agents = {
+            "/winlost_detail": self.winlost_turnover_ner_agent_config,
+            "/turnover": self.winlost_turnover_ner_agent_config,
+            "/outstanding": self.outstanding_ner_agent_config,
+            "/topoutstanding": self.top_outstanding_ner_agent_config
+        }
+        
+        return agents[function_called]()
+    
+@dataclasses.dataclass
+class AbbreviationNERAgentConfig:
+    winlost_turnover_ner_agent_config: AbbreviationWinlostTurnoverNERAgentConfig = AbbreviationWinlostTurnoverNERAgentConfig
+    outstanding_ner_agent_config: AbbreviationOutstandingNERAgentConfig = AbbreviationOutstandingNERAgentConfig
+    top_outstanding_ner_agent_config: AbbreviationTopOutstandingNERAgentConfig = AbbreviationTopOutstandingNERAgentConfig
     
     
     def get_agent(self, function_called: str) -> Any:
