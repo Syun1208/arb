@@ -1225,7 +1225,7 @@ class AbbreviationOutstandingNERAgentConfig:
             query=query, 
             instruction=self.instruction.format(
                 query=query,
-                parameter_properties=kwargs['abbreviated_parameters'],
+                abbreviated_parameters=kwargs['abbreviated_parameters'],
             ), 
             few_shot=self.few_shot
         )
