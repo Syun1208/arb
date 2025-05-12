@@ -788,7 +788,7 @@ class AbbreviationDateRangeExclusionAgentConfig:
     - ***Assistant***: {{"product": "Sportsbook", "product_detail": "SABA E-Sports PinGoal", "level": "All"}}
     
     - ***User***: "SB please for wl report"
-    - ***Assistant***: {{"product": "Sportsbook", "product_detail": "All", "level": "All"}} 
+    - ***Assistant***: {{"product": "Sportsbook", "product_detail": "Sportsbook", "level": "All"}} 
     
     - ***User***: "Give me wl report for Num GAME" 
     - ***Assistant***: {{"product": "Number Game", "product_detail": "All", "level": "All"}}
@@ -987,35 +987,75 @@ class ProductNERConfig:
     """
     instruction: str = """
         # Define your task:
-        Extract product information from the following sentence: '{query}'.
-        If no product is specified, return 'All'.
+        - Extract product information from the following sentence: '{query}'.
+        - If no product is specified, return 'All'.
         
-        Here is the list of products you should detect (PLEASE ONLY return product name that is in the list):
+        - Here is the list of products you must detect (PLEASE ONLY return product name that is in the list):
         ### PRODUCT = {lowercase_products}
+        
+        - You must detect all the keywords based on the abbreviation below:
+        {abbreviated_parameters}
+        
     """
     few_shot: str = """
-        # Example 1:
-        ## User: Get me a Win Loss Detail Report for Sportsbook
-        ## Output:
+
+        - ***User***: Get me a Win Loss Detail Report for Sportsbook
+        - ***Assistant***:
         {{
             "product": "Sportsbook"
         }}
         
-        # Example 2:
-        ## User: Win/Loss details for RNG Keno
-        ## Output:
+        - ***User***: Win/Loss details for RNG Keno
+        - ***Assistant***:
         {{
             "product": "RNG Keno"
         }}
         
-        # Example 3:
-        ## User: Show me the report
-        ## Output:
+        - ***User***: Show me the report
+        - ***Assistant***:
         {{
             "product": "All"
         }}
+    
+        - ***User***: "SBB please"
+        - ***Assistant***: 
+        {{
+            "product": "All"
+        }}
+        
+        - ***User***: "I want to get wl report for SBEPG and SB"
+        - ***Assistant***: 
+        {{
+            "product": "Sportsbook"
+        }}
+        
+        - ***User***: "SB please for wl report"
+        - ***Assistant***: 
+        {{
+            "product": "Sportsbook"
+        }} 
+        
+        - ***User***: "Give me wl report for Num GAME" 
+        - ***Assistant***: 
+        {{
+            "product": "Number Game"
+        }}
+        
+        - ***User***: "Show me the WL detail report for sag"
+        - ***Assistant***: 
+        {{
+            "product": "SA Gaming"
+        }}
+        
+        - ***User***: "I want to know wl report for sb basket pin and funky games please"
+        - ***Assistant***: 
+        {{
+            "product": "Funky Games"
+        }}
     """
     user_prompt: str = """
+        User request: {query}
+        
         {instruction}
         
         {few_shot}
@@ -1028,10 +1068,13 @@ class ProductNERConfig:
         "required": ["product"]
     })
     
-    def format_prompt(self, query: str, product_enums: List[str]) -> str:
-        # lowercase_products = [p.lower() for p in product_enums]
-        # print(query)
-        instruction_with_products = self.instruction.format(query=query, lowercase_products=product_enums)
+    def format_prompt(self, query: str, product_enums: List[str], abbreviated_parameters: List[str]) -> str:
+
+        instruction_with_products = self.instruction.format(
+            query=query, 
+            lowercase_products=product_enums,
+            abbreviated_parameters=abbreviated_parameters
+        )
         return self.user_prompt.format(
             query=query,
             instruction=instruction_with_products,
@@ -1046,35 +1089,73 @@ class ProductDetailNERConfig:
 
     instruction: str = """
         # Define your task:
-        Extract product detail information from the following sentence: '{query}'.
-        If no product detail is specified, return 'All'.
+        - Extract product detail information from the following sentence: '{query}'.
+        - If no product detail is specified, return 'All'.
         
-        Here is the list of product details you should detect (PLEASE ONLY return product detail name that is in the list):
+        - Here is the list of product details you should detect (PLEASE ONLY return product detail name that is in the list):
         ### PRODUCT_DETAIL = {lowercase_product_details}
+        
+        - You must detect all the keywords based on the abbreviation below:
+        {abbreviated_parameters}
     """
     few_shot: str = """
-        # Example 1:
-        ## User: Get me a Win Loss Detail Report for Product Detail Sportsbook
-        ## Output:
+        - ***User***: Get me a Win Loss Detail Report for Product Detail Sportsbook
+        - ***Assistant***:
         {{
             "product_detail": "Sportsbook"
         }}
         
-        # Example 2:
-        ## User: Win/Loss details for Product Detail SABA Basketball
-        ## Output:
+        - ***User***: Win/Loss details for Product Detail SABA Basketball
+        - ***Assistant***:
         {{
             "product_detail": "SABA Basketball"
         }}
         
-        # Example 3:
-        ## User: Show me the report
-        ## Output:
+        - ***User***: Show me the report
+        - ***Assistant***:
         {{
             "product_detail": "All"
         }}
+        
+        - ***User***: "SBB please"
+        - ***Assistant***:
+        {{
+            "product_detail": "SABA Basketball"
+        }}
+        
+        - ***User***: "I want to get wl report for SBEPG and SB"
+        - ***Assistant***:
+        {{
+            "product_detail": "SABA E-Sports PinGoal"
+        }}
+        
+        - ***User***: "SB please for wl report"
+        - ***Assistant***:
+        {{
+            "product_detail": "Sportsbook"
+        }} 
+        
+        - ***User***: "Give me wl report for Num GAME" 
+        - ***Assistant***:
+        {{
+            "product_detail": "All"
+        }}
+        
+        - ***User***: "Show me the WL detail report for sag"
+        - ***Assistant***:
+        {{
+            "product_detail": "SA Gaming"
+        }}
+        
+        - ***User***: "I want to know wl report for sb basket pin and funky games please"
+        - ***Assistant***:
+        {{
+            "product_detail": "SABA Basketball PinGoal"
+        }}
     """
-    user_prompt: str = """       
+    user_prompt: str = """  
+        User request: {query}
+        
         {instruction}
         
         {few_shot}
@@ -1087,9 +1168,12 @@ class ProductDetailNERConfig:
         "required": ["product_detail"]
     })
     
-    def format_prompt(self, query: str, product_detail_enums: List[str]) -> str:
-        # lowercase_product_details = [pd.lower() for pd in product_detail_enums]
-        instruction_with_product_details = self.instruction.format(query=query, lowercase_product_details=product_detail_enums)
+    def format_prompt(self, query: str, product_detail_enums: List[str], abbreviated_parameters: List[str]) -> str:
+        instruction_with_product_details = self.instruction.format(
+            query=query, 
+            lowercase_product_details=product_detail_enums,
+            abbreviated_parameters=abbreviated_parameters
+        )
         return self.user_prompt.format(
             query=query,
             instruction=instruction_with_product_details,
@@ -1109,30 +1193,68 @@ class LevelNERConfig:
         
         Here is the list of levels you should detect:
         ### LEVEL = {lowercase_levels}
+        
+        - You must detect all the keywords based on the abbreviation below:
+        {abbreviated_parameters}
     """
     few_shot: str = """
-        # Example 1:
-        ## User: Get me a Win Loss Detail Report for Direct Member
-        ## Output:
+        - ***User***: Get me a Win Loss Detail Report for Direct Member
+        - ***Assistant***:
         {{
             "level": "Direct Member"
         }}
-        
-        # Example 2:
-        ## User: Win/Loss details for Super Agent
-        ## Output:
+
+        - ***User***: Win/Loss details for Super Agent
+        - ***Assistant***:
         {{
             "level": "Super Agent"
         }}
         
-        # Example 3:
-        ## User: Show me the report
-        ## Output:
+
+        - ***User***: Show me the report
+        - ***Assistant***:
         {{
             "level": "All"
         }}
+        
+        - ***User***: "SBB please"
+        - ***Assistant***:
+        {{
+            "level": "All"
+        }}
+        
+        - ***User***: "I want to get wl report for user level MA"
+        - ***Assistant***:
+        {{
+            "level": "Master Agent"
+        }}
+        
+        - ***User***: "SB please for wl report user leve AG"
+        - ***Assistant***:
+        {{
+            "level": "Agent"
+        }} 
+        
+        - ***User***: "Give me wl report for Num GAME user level DM" 
+        - ***Assistant***:
+        {{
+            "level": "Direct Member"
+        }}
+        
+        - ***User***: "Show me the WL detail report for sag user level SA"
+        - ***Assistant***:
+        {{
+            "level": "Super Agent"
+        }}
+        
+        - ***User***: "I want to know wl report for sb basket pin and funky games please user level AG"
+        - ***Assistant***:
+        {{
+            "level": "Agent"
+        }}
     """
     user_prompt: str = """
+        User request: {query}
         
         {instruction}
         
@@ -1146,9 +1268,13 @@ class LevelNERConfig:
         "required": ["level"]
     })
     
-    def format_prompt(self, query: str, level_enums: List[str]) -> str:
+    def format_prompt(self, query: str, level_enums: List[str], abbreviated_parameters: List[str]) -> str:
 
-        instruction_with_levels = self.instruction.format(query=query, lowercase_levels=level_enums)
+        instruction_with_levels = self.instruction.format(
+            query=query, 
+            lowercase_levels=level_enums,
+            abbreviated_parameters=abbreviated_parameters
+        )
         return self.user_prompt.format(
             query=query,
             instruction=instruction_with_levels,
@@ -1177,13 +1303,21 @@ class WinlostTurnoverNERAgentConfig:
 @dataclasses.dataclass
 class AbbreviationWinlostTurnoverNERAgentConfig:
     date_range_config: DateRangeNERConfig = dataclasses.field(default_factory=lambda: DateRangeNERConfig())
-    the_others_config: AbbreviationDateRangeExclusionAgentConfig = dataclasses.field(default_factory=lambda: AbbreviationDateRangeExclusionAgentConfig())
+    product_config: ProductNERConfig = dataclasses.field(default_factory=lambda: ProductNERConfig())
+    product_detail_config: ProductDetailNERConfig = dataclasses.field(default_factory=lambda: ProductDetailNERConfig())
+    level_config: LevelNERConfig = dataclasses.field(default_factory=lambda: LevelNERConfig())
 
     def format_date_range_prompt(self, query: str) -> str:
         return self.date_range_config.format_prompt(query)
 
-    def format_the_others_prompt(self, query: str, abbreviated_parameters: List[str]) -> str:
-        return self.the_others_config.format_prompt(query=query, abbreviated_parameters=abbreviated_parameters)
+    def format_product_prompt(self, query: str, product_enum: List[str], abbreviated_parameters: List[str]) -> str:
+        return self.product_config.format_prompt(query, product_enum, abbreviated_parameters)
+    
+    def format_product_detail_prompt(self, query: str, product_detail_enum: List[str], abbreviated_parameters: List[str]) -> str:
+        return self.product_detail_config.format_prompt(query, product_detail_enum, abbreviated_parameters)
+    
+    def format_level_prompt(self, query: str, level_enum: List[str], abbreviated_parameters: List[str]) -> str:
+        return self.level_config.format_prompt(query, level_enum, abbreviated_parameters)
 
 @dataclasses.dataclass
 class AbbreviationOutstandingNERAgentConfig:

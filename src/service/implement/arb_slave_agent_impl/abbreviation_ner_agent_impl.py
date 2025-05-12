@@ -62,17 +62,37 @@ class AbbreviationNERAgentImpl(NerAgent):
         for param, param_info in parameter_properties.items():
             
             if "abbreviation" in param_info:
-                list_abbreviation_prompt2 = []
+                list_abbreviation_prompt = []
                 for key, value in param_info['abbreviation'].items():
                     
                     prompt = f"""
                     {value} => {key}
                     """
-                    list_abbreviation_prompt2.append(prompt)
-                list_abbreviation_prompt2text = f"{param}:\n" + "\n".join(list_abbreviation_prompt2)
+                    list_abbreviation_prompt.append(prompt)
+                list_abbreviation_prompt2text = f"{param}:\n" + "\n".join(list_abbreviation_prompt)
                 list_abbreviation_prompt.append(list_abbreviation_prompt2text)
                 
         return "\n".join(list_abbreviation_prompt)
+    
+    
+    def __get_specific_info_parameters(self, function_called: str, name_parameter: str) -> List[str]:
+        parameter_properties = self.report_config[function_called]['function']['parameters']['properties']
+        param_info = parameter_properties[name_parameter]
+        enum = param_info['enum']
+        abbreviation_prompt2text = ""
+
+            
+        if "abbreviation" in param_info:
+            list_abbreviation_prompt = []
+            for key, value in param_info['abbreviation'].items():
+                
+                prompt = f"""
+                {value} => {key}
+                """
+                list_abbreviation_prompt.append(prompt)
+            abbreviation_prompt2text = f"{name_parameter}:\n" + "\n".join(list_abbreviation_prompt)
+                
+        return abbreviation_prompt2text, enum
     
     
     def __validate(self, function_called: str, entities: Dict[str, Any]) -> bool:
@@ -142,31 +162,58 @@ class AbbreviationNERAgentImpl(NerAgent):
             Dict[str, Any]: Dictionary containing extracted entities and their metadata
         """
         
-        abbreviated_parameters = self.__get_abbreviated_parameters(function_called)
         agent = self.agent_config.get_agent(function_called)
 
         if function_called in ["/winlost_detail", "/turnover"]:
             extracted_entities = {}
 
             # Prompts
+            abbreviated_product_parameters, product_enum = self.__get_specific_info_parameters(function_called, "product")
+            abbreviated_product_detail_parameters, product_detail_enum = self.__get_specific_info_parameters(function_called, "product_detail")
+            abbreviated_level_parameters, level_enum = self.__get_specific_info_parameters(function_called, "level")
+            
             date_range_prompt = agent.format_date_range_prompt(query=query)
-            remaining_parameters_prompt = agent.format_the_others_prompt(query=query, abbreviated_parameters=abbreviated_parameters)
+            product_prompt = agent.format_product_prompt(
+                query=query, 
+                product_enum=product_enum,
+                abbreviated_parameters=abbreviated_product_parameters
+            )
+            product_detail_prompt = agent.format_product_detail_prompt(
+                query=query,
+                product_detail_enum=product_detail_enum,
+                abbreviated_parameters=abbreviated_product_detail_parameters
+            )
+            level_prompt = agent.format_level_prompt(
+                query=query, 
+                level_enum=level_enum,
+                abbreviated_parameters=abbreviated_level_parameters
+            )
+            # remaining_parameters_prompt = agent.format_the_others_prompt(query=query, abbreviated_parameters=abbreviated_parameters)
 
             # Run extractions in parallel using threads
             with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
                 date_range_future = executor.submit(self.__call_llm_extracting, date_range_prompt, agent.date_range_config)
-                remaining_params_future = executor.submit(self.__call_llm_extracting, remaining_parameters_prompt, agent.the_others_config)
+                product_future = executor.submit(self.__call_llm_extracting, product_prompt, agent.product_config)
+                product_detail_future = executor.submit(self.__call_llm_extracting, product_detail_prompt, agent.product_detail_config)
+                level_future = executor.submit(self.__call_llm_extracting, level_prompt, agent.level_config)
+                # remaining_params_future = executor.submit(self.__call_llm_extracting, remaining_parameters_prompt, agent.the_others_config)
 
                 date_range_response = date_range_future.result()
-                remaining_parameters_response = remaining_params_future.result()
+                product_response = product_future.result()
+                product_detail_response = product_detail_future.result()
+                level_response = level_future.result()
+                # remaining_parameters_response = remaining_params_future.result()
 
             # Update extracted entities with results
             extracted_entities.update(date_range_response)
-            extracted_entities.update(remaining_parameters_response)
+            extracted_entities.update(product_response)
+            extracted_entities.update(product_detail_response)
+            extracted_entities.update(level_response)
             
             extracted_entities = self.__handle_username(function_called, extracted_entities)
 
         else:
+            abbreviated_parameters = self.__get_abbreviated_parameters(function_called)
             user_prompt = agent.format_prompt(
                 query=query,
                 abbreviated_parameters=abbreviated_parameters

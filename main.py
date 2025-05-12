@@ -90,7 +90,7 @@ if __name__ == "__main__":
         app='main:app', 
         host=config['server']['http']['host'], 
         port=int(config['server']['http']['port']), 
-        reload=True, 
+        reload=True,
         workers=psutil.cpu_count(logical=False) - 2, 
         timeout_keep_alive=20
     )
