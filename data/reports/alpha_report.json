@@ -217,6 +217,7 @@
                             "ASKMESLOT Promotion Prize"
                         ],
                         "abbreviation": {
+                            "Sportsbook": ["SB", "SprtBooks", "sportsbook"],
                             "SABA Basketball": ["SBB", "SABA B", "SB Basketball", "saba basketball"],
                             "SABA Basketball PinGoal": ["SBBPG", "sb basket pin", "saba basket pin"],
                             "SABA E-Sports PinGoal": ["SBEPG", "saba e-sports pin", "saba e-sports pin"],
@@ -495,6 +496,7 @@
                             "ASKMESLOT Promotion Prize"
                         ],
                         "abbreviation": {
+                            "Sportsbook": ["SB", "SprtBooks", "sportsbook"],
                             "SABA Basketball": ["SBB", "SABA B", "SB Basketball", "saba basketball"],
                             "SABA Basketball PinGoal": ["SBBPG", "sb basket pin", "saba basket pin"],
                             "SABA E-Sports PinGoal": ["SBEPG", "saba e-sports pin", "saba e-sports pin"],

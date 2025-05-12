@@ -147,7 +147,7 @@ class AbbreviationNERAgentImpl(NerAgent):
             extracted_entities.update(date_range_response)
 
             # Extract product
-            remaining_parameters_prompt = agent.format_the_others_prompt(query=query, abbreviated_parameters=abbreviated_parameters)
+            remaining_parameters_prompt = agent.format_the_others_prompt(message=query, abbreviated_parameters=abbreviated_parameters)
             remaining_parameters_response = self.__call_llm_extracting(remaining_parameters_prompt, agent.the_others_config)
             extracted_entities.update(remaining_parameters_response)
             
