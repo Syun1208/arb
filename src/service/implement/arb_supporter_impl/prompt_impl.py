@@ -1045,10 +1045,16 @@ class ProductNERConfig:
             "product": "All"
         }}
     
-        - ***User***: "SBB please"
+        - ***User***: turnover report for btc and sb soccer day 25
         - ***Assistant***: 
         {{
-            "product": "All"
+            "product": "Bitcoin"
+        }}
+        
+        - ***User***: give me top 24 for NSP
+        - ***Assistant***: 
+        {{
+            "product": "Nextspin"
         }}
         
         - ***User***: "I want to get wl report for SBEPG and SB"
@@ -1143,6 +1149,12 @@ class ProductDetailNERConfig:
         - ***Assistant***:
         {{
             "product_detail": "All"
+        }}
+        
+        - ***User***: turnover report for btc and sb soccer day 25
+        - ***Assistant***:
+        {{
+            "product_detail": "SABA Soccer"
         }}
         
         - ***User***: "SBB please"
@@ -1263,6 +1275,13 @@ class LevelNERConfig:
             "level": "Master Agent"
         }}
         
+        - ***User***: "Give me wl report for sb only last week
+"
+        - ***Assistant***:
+        {{
+            "level": "All"
+        }}
+        
         - ***User***: "SB please for wl report user leve AG"
         - ***Assistant***:
         {{
@@ -1360,6 +1379,8 @@ class AbbreviationOutstandingNERAgentConfig:
     - Extract the most relevant keywords from the following sentence: '{query}'. 
     - You must detect all the keywords based on the abbreviation below:
         {abbreviated_parameters}
+    - Here is the list of products you must detect (PLEASE ONLY return product name that is in the list):
+        ### PRODUCT = {products}
     - Return the following format output:
         {{
             "product": "<product_name>",
@@ -1369,15 +1390,7 @@ class AbbreviationOutstandingNERAgentConfig:
     - If the user is not specified, please return 'N/A' for user.
     """
     few_shot: str = """
-        # Example 1:
-        ## User: My current outstanding for sb
-        ## Output:
-        {{
-            "product": "Sportsbook",
-            "user": "N/A"
-        }}
-        
-        Example 2:
+
         ## User: I want sprtbook only
         ## Output:
         {{
@@ -1385,7 +1398,6 @@ class AbbreviationOutstandingNERAgentConfig:
             "user": "N/A"
         }}
         
-        Example 3:
         ## User: The outstanding of Master1 for num game
         ## Output:
         {{
@@ -1393,11 +1405,24 @@ class AbbreviationOutstandingNERAgentConfig:
             "user": "Master1"
         }}
         
-        Example 4:
         ## User: Outstanding report for sg
         ## Output:
         {{
             "product": "SG",
+            "user": "N/A"
+        }}
+        
+        ## User: Give me the outstanding report for Saba Promotion
+        ## Output:
+        {{
+            "product": "Saba Promotion",
+            "user": "N/A"
+        }}
+        
+        ## User: I want to get outstanding report for IBCBet Live Casino
+        ## Output:
+        {{
+            "product": "IBCBet Live Casino",
             "user": "N/A"
         }}
     """
@@ -1428,6 +1453,7 @@ class AbbreviationOutstandingNERAgentConfig:
             instruction=self.instruction.format(
                 query=query,
                 abbreviated_parameters=kwargs['abbreviated_parameters'],
+                products=kwargs['products']
             ), 
             few_shot=self.few_shot
         )
@@ -1438,8 +1464,9 @@ class AbbreviationTopOutstandingNERAgentConfig:
     instruction: str = """
     # Define your task:
     - Extract the most relevant keywords from the following sentence: '{query}'. 
-    - You must detect all the keywords based on the abbreviation below:
         {abbreviated_parameters}
+    - Here is the list of products you must detect (PLEASE ONLY return product name that is in the list):
+        ### PRODUCT = {products}
     - Return the following format output:
         {{
             "product": "<product_name>",
@@ -1449,23 +1476,22 @@ class AbbreviationTopOutstandingNERAgentConfig:
     - If the top is not specified, please return 10 for top.
     """
     few_shot: str = """
-        # Example 1:
+
         ## User: I want to get top outstanding for sb only
         ## Output:
         {{
             "product": "Sportsbook",
             "top": 10
         }}
-        
-        Example 2:
-        ## User: Top 40 Outstanding of sb
+
+
+        ## User: Top 40 Outstanding of Allbet
         ## Output:
         {{
-            "product": "Sportsbook",
+            "product": "Allbet",
             "top": 40
         }}
         
-        Example 3:
         ## User: give me the first 20 outstanding sorting from highest to lowest for btc
         ## Output:
         {{
@@ -1473,7 +1499,6 @@ class AbbreviationTopOutstandingNERAgentConfig:
             "top": 20
         }}
         
-        Example 4:
         ## User: give me the first 70 outstanding decreasing for yb
         ## Output:
         {{
@@ -1481,7 +1506,6 @@ class AbbreviationTopOutstandingNERAgentConfig:
             "top": 70
         }}
         
-        Example 5:
         ## User: Limit to top 100 FOR l22
         ## Output:
         {{
@@ -1489,7 +1513,6 @@ class AbbreviationTopOutstandingNERAgentConfig:
             "top": 100
         }}
         
-        Example 6:
         ## User: Please give me the top 1 outstanding for sbc
         ## Output:
         {{
@@ -1497,12 +1520,25 @@ class AbbreviationTopOutstandingNERAgentConfig:
             "top": 1
         }}
         
-        Example 7:
-        ## User: top 200 outstanding for Number Game for fc
+        ## User: top 200 outstanding for fc
         ## Output:
         {{
             "product": "FA CHAI",
             "top": 200
+        }}
+        
+        ## User: give me top 25 for Saba Virtual Sports
+        ## Output:
+        {{
+            "product": "Saba Virtual Sports",
+            "top": 25
+        }}
+        
+        ## User: I want to get top 62 for Yolo Play
+        ## Output:
+        {{
+            "product": "Yolo Play",
+            "top": 62
         }}
     """
     system_prompt: str = """
@@ -1533,6 +1569,7 @@ class AbbreviationTopOutstandingNERAgentConfig:
             instruction=self.instruction.format(
                 query=query,
                 abbreviated_parameters=kwargs['abbreviated_parameters'],
+                products=kwargs['products']
             ), 
             few_shot=self.few_shot
         )
@@ -1548,6 +1585,7 @@ class OutstandingNERAgentConfig:
         If the product is not specified, please return 'All' for product.
         If the user is not specified, please return 'N/A' for username.
 
+        
         Here is the list of product you should detect:
         {parameter_properties}
     """

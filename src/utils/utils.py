@@ -17,9 +17,11 @@ def load_bin(path: str) -> faiss.IndexFlatIP:
     cpu_index = faiss.read_index(path)
     return cpu_index
 
+
 def load_pickle(path: str) -> List[str]:
     with open(path, 'rb') as f:
         return pickle.load(f)
+
 
 def load_yaml(file_path: str):
     try:
@@ -30,12 +32,10 @@ def load_yaml(file_path: str):
         return None
     
 
-
 def load_json(path) -> Dict[str, Any]:
     with open(path, 'r', encoding="utf-8") as json_file:
         documents = json.load(json_file)
     return documents
-
 
 
 def to_json(data, path):
@@ -56,7 +56,6 @@ def get_current_year(time_zone: str = "Etc/GMT-4") -> str:
     return datetime.now(ZoneInfo(time_zone)).strftime("%Y")
 
 
-
 def get_current_date(time_zone: str = "Etc/GMT-4") -> str:
     """
     Get the current datetime in YYYY-MM-DD format.
@@ -67,7 +66,6 @@ def get_current_date(time_zone: str = "Etc/GMT-4") -> str:
     return datetime.now(ZoneInfo(time_zone)).strftime("%Y-%m-%d")
 
 
-
 def get_current_month(time_zone: str = "Etc/GMT-4") -> str:
     """
     Get the current month in MM format.
@@ -76,6 +74,7 @@ def get_current_month(time_zone: str = "Etc/GMT-4") -> str:
         str: Current month in MM format
     """
     return datetime.now(ZoneInfo(time_zone)).strftime("%m")
+
 
 def get_current_day(time_zone: str = "Etc/GMT-4") -> str:
     """
@@ -96,6 +95,7 @@ def get_current_previous_date(time_zone: str = "Etc/GMT-4") -> str:
     """
     return (datetime.now(ZoneInfo(time_zone)) - timedelta(days=1)).strftime("%d")
 
+
 def get_last_week_dates(time_zone: str = "Etc/GMT-4") -> tuple[str, str]:
     """
     Get the dates from 7 days ago to today in DD/MM/YYYY format.
@@ -114,6 +114,7 @@ def get_last_week_dates(time_zone: str = "Etc/GMT-4") -> tuple[str, str]:
     to_date = current_date.strftime("%d/%m/%Y")
     
     return from_date, to_date
+
 
 def format_entities_for_prompt(entities: Dict[str, str]) -> str:
     """
@@ -257,7 +258,6 @@ def get_this_month_dates(time_zone: str = "Etc/GMT-4") -> tuple[str, str]:
     to_date = last_day.strftime("%d/%m/%Y")
     
     return from_date, to_date
-
 
 
 def get_this_year_dates(time_zone: str = "Etc/GMT-4") -> tuple[str, str]:
@@ -424,6 +424,7 @@ def extract_number(text: str) -> int:
         return int(numbers[0])
     return None
 
+
 def get_most_common(items: List[str]) -> str:
     """
     Get the most common item in a list.
@@ -473,6 +474,7 @@ def get_item_statistics(items: List[List[str]], weights: List[float]) -> str:
         
     return prob_items
 
+
 def get_highest_confidence(items: List[List[str]], weights: List[float]) -> str:
     prob_items = get_item_statistics(items, weights)
 
@@ -486,6 +488,7 @@ def get_highest_confidence(items: List[List[str]], weights: List[float]) -> str:
     sorted_items = np.array(items)[sorted_prob].tolist()
 
     return sorted_items
+
 
 def weighted_voting(items: List[List[str]], weights: List[float]) -> str:
     

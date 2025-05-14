@@ -54,7 +54,6 @@ class AbbreviationNERAgentImpl(NerAgent):
             
         return default_value
     
-    
     def __get_abbreviated_parameters(self, function_called: str) -> List[str]:
         parameter_properties = self.report_config[function_called]['function']['parameters']['properties']
         
@@ -73,7 +72,6 @@ class AbbreviationNERAgentImpl(NerAgent):
                 list_abbreviation_prompt.append(list_abbreviation_prompt2text)
                 
         return "\n".join(list_abbreviation_prompt)
-    
     
     def __get_specific_info_parameters(self, function_called: str, name_parameter: str) -> List[str]:
         parameter_properties = self.report_config[function_called]['function']['parameters']['properties']
@@ -94,7 +92,6 @@ class AbbreviationNERAgentImpl(NerAgent):
                 
         return abbreviation_prompt2text, enum
     
-    
     def __validate(self, function_called: str, entities: Dict[str, Any]) -> bool:
 
         func_info = self.report_config[function_called]
@@ -106,7 +103,6 @@ class AbbreviationNERAgentImpl(NerAgent):
                     entities[key] = value['default']
                 
         return entities
-    
     
     def __handle_result_topoutstanding(self, function_called: str, entities: Dict[str, Any], query: str) -> Dict[str, Any]:
     
@@ -149,7 +145,6 @@ class AbbreviationNERAgentImpl(NerAgent):
             endpoint='/api/chat'
         )
         return json.loads(response)
-    
     
     def extract_entities(self, query: str, function_called: str) -> Dict[str, Any]:
         """
@@ -212,11 +207,13 @@ class AbbreviationNERAgentImpl(NerAgent):
             
             extracted_entities = self.__handle_username(function_called, extracted_entities)
 
+        # For outstanding and topoutstanding report
         else:
-            abbreviated_parameters = self.__get_abbreviated_parameters(function_called)
+            abbreviated_parameters, product_enum = self.__get_specific_info_parameters(function_called, "product")
             user_prompt = agent.format_prompt(
                 query=query,
-                abbreviated_parameters=abbreviated_parameters
+                abbreviated_parameters=abbreviated_parameters,
+                products=product_enum
             )
             extracted_entities = self.__call_llm_extracting(user_prompt, agent)
 
