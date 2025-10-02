@@ -22,6 +22,9 @@ class ConfirmationRecognizerAgentConfig:
         - ***User***: "I want to confirm it"
         - ***Assistant***: {{"is_confirmed": 1}}
         
+        - ***User***: "oke get me the report"
+        - ***Assistant***: {{"is_confirmed": 1}}
+        
         - ***User***: "I want to get wl report for CRK please"
         - ***Assistant***: {{"is_confirmed": 0}}
         

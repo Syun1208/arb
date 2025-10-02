@@ -1,2 +1,2 @@
 llm_config:
-  api: "https://ollama.selab.edu.vn"
+  api: "https://saiollama.oneops.net" # https://saillm.oneops.net
